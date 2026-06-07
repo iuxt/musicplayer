@@ -1,0 +1,300 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ScanProgress, ScanWarning, Track } from "../shared/types";
+import { EmptyState } from "./components/EmptyState";
+import { FullscreenLyrics } from "./components/FullscreenLyrics";
+import { LibraryList } from "./components/LibraryList";
+import { PlayerBar } from "./components/PlayerBar";
+import { Playlist } from "./components/Playlist";
+import { ScanningState } from "./components/ScanningState";
+import { Sidebar } from "./components/Sidebar";
+import { useAudioPlayer } from "./hooks/useAudioPlayer";
+import type { LibraryCategory } from "./libraryCategories";
+
+const LAST_FOLDER_STORAGE_KEY = "local-music-player:last-folder";
+
+export function App() {
+  const [folderPath, setFolderPath] = useState<string | null>(null);
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [warnings, setWarnings] = useState<ScanWarning[]>([]);
+  const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [search, setSearch] = useState("");
+  const [activeCategory, setActiveCategory] = useState<LibraryCategory>("songs");
+  const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(null);
+  const [playQueue, setPlayQueue] = useState<Track[]>([]);
+  const [playlistLabel, setPlaylistLabel] = useState("Library");
+  const [appError, setAppError] = useState<string | null>(null);
+  const [artworkUrl, setArtworkUrl] = useState<string | null>(null);
+  const [lyrics, setLyrics] = useState<string | null>(null);
+  const [isLyricsLoading, setIsLyricsLoading] = useState(false);
+  const [isFullscreenLyricsOpen, setIsFullscreenLyricsOpen] = useState(false);
+
+  const filteredTracks = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) {
+      return tracks;
+    }
+
+    return tracks.filter((track) =>
+      [track.title, track.artist, track.album].some((value) => value.toLowerCase().includes(query))
+    );
+  }, [search, tracks]);
+
+  const visibleTracks = useMemo(() => {
+    if (activeCategory === "folders" && selectedFolderPath) {
+      return filteredTracks.filter((track) => track.folderPath === selectedFolderPath);
+    }
+
+    return filteredTracks;
+  }, [activeCategory, filteredTracks, selectedFolderPath]);
+
+  const player = useAudioPlayer(playQueue.length > 0 ? playQueue : filteredTracks);
+
+  useEffect(() => {
+    setPlayQueue((currentQueue) => (currentQueue.length > 0 ? currentQueue : tracks));
+  }, [tracks]);
+
+  const chooseFolder = useCallback(async () => {
+    setIsScanning(true);
+    setAppError(null);
+    setScanProgress(null);
+
+    try {
+      const result = await window.musicApi.chooseMusicFolder();
+      if (!result) {
+        return;
+      }
+      setFolderPath(result.folderPath);
+      setTracks(result.tracks);
+      setWarnings(result.warnings);
+      setPlayQueue(result.tracks);
+      setPlaylistLabel("Library");
+      setSelectedFolderPath(null);
+      localStorage.setItem(LAST_FOLDER_STORAGE_KEY, result.folderPath);
+    } catch (error) {
+      setAppError(error instanceof Error ? error.message : "Unable to scan the folder.");
+    } finally {
+      setIsScanning(false);
+    }
+  }, []);
+
+  const rescan = useCallback(async () => {
+    if (!folderPath) {
+      return;
+    }
+
+    setIsScanning(true);
+    setAppError(null);
+    setScanProgress(null);
+
+    try {
+      const result = await window.musicApi.rescanLibrary(folderPath);
+      setFolderPath(result.folderPath);
+      setTracks(result.tracks);
+      setWarnings(result.warnings);
+      setPlayQueue(result.tracks);
+      setPlaylistLabel("Library");
+      setSelectedFolderPath(null);
+      localStorage.setItem(LAST_FOLDER_STORAGE_KEY, result.folderPath);
+    } catch (error) {
+      setAppError(error instanceof Error ? error.message : "Unable to rescan the folder.");
+    } finally {
+      setIsScanning(false);
+    }
+  }, [folderPath]);
+
+  useEffect(() => {
+    return window.musicApi.onScanProgress(setScanProgress);
+  }, []);
+
+  useEffect(() => {
+    return window.musicApi.onMenuCommand((command) => {
+      if (command === "choose-folder") {
+        void chooseFolder();
+      }
+      if (command === "rescan-library") {
+        void rescan();
+      }
+    });
+  }, [chooseFolder, rescan]);
+
+  useEffect(() => {
+    const rememberedFolderPath = localStorage.getItem(LAST_FOLDER_STORAGE_KEY);
+    if (!rememberedFolderPath) {
+      return;
+    }
+
+    let cancelled = false;
+    setFolderPath(rememberedFolderPath);
+    setIsScanning(true);
+    setAppError(null);
+    setScanProgress(null);
+
+    void window.musicApi
+      .rescanLibrary(rememberedFolderPath)
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+        setFolderPath(result.folderPath);
+        setTracks(result.tracks);
+        setWarnings(result.warnings);
+        setPlayQueue(result.tracks);
+        setPlaylistLabel("Library");
+        setSelectedFolderPath(null);
+        localStorage.setItem(LAST_FOLDER_STORAGE_KEY, result.folderPath);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          setAppError(error instanceof Error ? error.message : "Unable to reopen the last music folder.");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsScanning(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const track = player.currentTrack;
+    setArtworkUrl(null);
+    setLyrics(null);
+    setIsLyricsLoading(Boolean(track?.hasLyrics));
+
+    if (!track) {
+      setIsLyricsLoading(false);
+      return;
+    }
+
+    void window.musicApi.getArtworkUrl(track.artworkPath).then((url) => {
+      if (!cancelled) {
+        setArtworkUrl(url);
+      }
+    });
+
+    void window.musicApi
+      .getLyrics(track.lyricsPath)
+      .then((text) => {
+        if (!cancelled) {
+          setLyrics(text);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setLyrics(null);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLyricsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [player.currentTrack]);
+
+  function changeCategory(category: LibraryCategory) {
+    setActiveCategory(category);
+    if (category !== "folders") {
+      setSelectedFolderPath(null);
+    }
+  }
+
+  function openFolder(nextFolderPath: string) {
+    setSelectedFolderPath(nextFolderPath);
+  }
+
+  async function playTrack(track: Track) {
+    const nextQueue = activeCategory === "folders" && selectedFolderPath ? visibleTracks : filteredTracks;
+    setPlayQueue(nextQueue);
+    setPlaylistLabel(activeCategory === "folders" && selectedFolderPath ? selectedFolderPath : "Library");
+    await player.playTrack(track);
+  }
+
+  async function selectPlaylistTrack(track: Track) {
+    await player.playTrack(track);
+  }
+
+  async function selectTrack(track: Track) {
+    await player.selectTrack(track);
+  }
+
+  return (
+    <div className="app-frame">
+      <Sidebar
+        folderPath={folderPath}
+        trackCount={tracks.length}
+        activeCategory={activeCategory}
+        onCategoryChange={changeCategory}
+      />
+
+      <main className="main-stage">
+        {isScanning ? <ScanningState progress={scanProgress} /> : null}
+        {appError ? <div className="app-error">{appError}</div> : null}
+        {warnings.length > 0 ? <div className="warning-strip">{warnings.length} files skipped while scanning.</div> : null}
+
+        {tracks.length === 0 ? (
+          <EmptyState onChooseFolder={chooseFolder} isScanning={isScanning} />
+        ) : (
+          <div className="library-workspace">
+            <LibraryList
+              category={activeCategory}
+              tracks={visibleTracks}
+              currentTrack={player.currentTrack}
+              search={search}
+              selectedFolderPath={selectedFolderPath}
+              onSearchChange={setSearch}
+              onSelectTrack={playTrack}
+              onOpenFolder={openFolder}
+              onBackToFolders={() => setSelectedFolderPath(null)}
+            />
+            <Playlist tracks={playQueue.length > 0 ? playQueue : filteredTracks} currentTrack={player.currentTrack} label={playlistLabel} onSelectTrack={selectPlaylistTrack} />
+          </div>
+        )}
+      </main>
+
+      {isFullscreenLyricsOpen ? (
+        <FullscreenLyrics
+          track={player.currentTrack}
+          artworkUrl={artworkUrl}
+          lyrics={lyrics}
+          isLyricsLoading={isLyricsLoading}
+          currentTime={player.currentTime}
+          onClose={() => setIsFullscreenLyricsOpen(false)}
+        />
+      ) : null}
+
+      <PlayerBar
+        track={player.currentTrack}
+        artworkUrl={artworkUrl}
+        isPlaying={player.isPlaying}
+        currentTime={player.currentTime}
+        duration={player.duration}
+        volume={player.volume}
+        shuffle={player.shuffle}
+        repeat={player.repeat}
+        onOpenNowPlaying={() => setIsFullscreenLyricsOpen(true)}
+        onPlayPause={() => {
+          void player.playPause();
+        }}
+        onPrevious={() => {
+          void player.previous();
+        }}
+        onNext={() => {
+          void player.next();
+        }}
+        onSeek={player.seek}
+        onVolume={player.setVolume}
+        onPlaybackMode={player.cyclePlaybackMode}
+      />
+    </div>
+  );
+}

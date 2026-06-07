@@ -1,0 +1,215 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Track } from "../../shared/types";
+
+export type RepeatMode = "off" | "all" | "one";
+
+export function useAudioPlayer(queue: Track[]) {
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [currentTrack, setCurrentTrack] = useState<Track | null>(queue[0] ?? null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [volume, setVolumeState] = useState(0.82);
+  const [shuffle, setShuffle] = useState(false);
+  const [repeat, setRepeat] = useState<RepeatMode>("off");
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
+
+  const currentIndex = useMemo(() => {
+    if (!currentTrack) {
+      return -1;
+    }
+    return queue.findIndex((track) => track.id === currentTrack.id);
+  }, [currentTrack, queue]);
+
+  useEffect(() => {
+    const audio = new Audio();
+    audio.volume = volume;
+    audioRef.current = audio;
+
+    const updateTime = () => setCurrentTime(audio.currentTime);
+    const updateDuration = () => setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
+    const handleEnded = () => {
+      void next();
+    };
+    const handleError = () => {
+      setPlaybackError("Unable to play this track.");
+      setIsPlaying(false);
+    };
+
+    audio.addEventListener("timeupdate", updateTime);
+    audio.addEventListener("loadedmetadata", updateDuration);
+    audio.addEventListener("ended", handleEnded);
+    audio.addEventListener("error", handleError);
+
+    return () => {
+      audio.pause();
+      audio.removeEventListener("timeupdate", updateTime);
+      audio.removeEventListener("loadedmetadata", updateDuration);
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleError);
+    };
+    // The ended handler intentionally reads the latest queue state through React closures.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!currentTrack && queue.length > 0) {
+      setCurrentTrack(queue[0]);
+    }
+  }, [currentTrack, queue]);
+
+  const loadTrack = useCallback(async (track: Track, autoplay: boolean) => {
+    const audio = audioRef.current;
+    if (!audio) {
+      setCurrentTrack(track);
+      return;
+    }
+
+    setPlaybackError(null);
+    const url = await window.musicApi.getPlayableUrl(track.filePath);
+    audio.src = url;
+    audio.currentTime = 0;
+    setCurrentTime(0);
+    setCurrentTrack(track);
+
+    if (autoplay) {
+      await audio.play();
+      setIsPlaying(true);
+    }
+  }, []);
+
+  const selectTrack = useCallback(
+    async (track: Track) => {
+      await loadTrack(track, isPlaying);
+    },
+    [isPlaying, loadTrack]
+  );
+
+  const playTrack = useCallback(
+    async (track: Track) => {
+      await loadTrack(track, true);
+    },
+    [loadTrack]
+  );
+
+  const playPause = useCallback(async () => {
+    const audio = audioRef.current;
+    const track = currentTrack ?? queue[0] ?? null;
+    if (!track || !audio) {
+      return;
+    }
+
+    if (!audio.src) {
+      await loadTrack(track, true);
+      return;
+    }
+
+    if (isPlaying) {
+      audio.pause();
+      setIsPlaying(false);
+      return;
+    }
+
+    await audio.play();
+    setIsPlaying(true);
+  }, [currentTrack, isPlaying, loadTrack, queue]);
+
+  const next = useCallback(async () => {
+    if (queue.length === 0) {
+      return;
+    }
+
+    if (repeat === "one" && currentTrack) {
+      await loadTrack(currentTrack, isPlaying);
+      return;
+    }
+
+    const nextIndex = shuffle
+      ? randomQueueIndex(queue.length, currentIndex)
+      : currentIndex >= queue.length - 1
+        ? repeat === "all"
+          ? 0
+          : currentIndex
+        : currentIndex + 1;
+
+    await loadTrack(queue[Math.max(nextIndex, 0)], isPlaying);
+  }, [currentIndex, currentTrack, isPlaying, loadTrack, queue, repeat, shuffle]);
+
+  const previous = useCallback(async () => {
+    if (queue.length === 0) {
+      return;
+    }
+
+    const previousIndex = currentIndex <= 0 ? 0 : currentIndex - 1;
+    await loadTrack(queue[previousIndex], isPlaying);
+  }, [currentIndex, isPlaying, loadTrack, queue]);
+
+  const seek = useCallback((time: number) => {
+    const audio = audioRef.current;
+    if (!audio) {
+      return;
+    }
+    audio.currentTime = time;
+    setCurrentTime(time);
+  }, []);
+
+  const setVolume = useCallback((nextVolume: number) => {
+    const clamped = Math.min(1, Math.max(0, nextVolume));
+    if (audioRef.current) {
+      audioRef.current.volume = clamped;
+    }
+    setVolumeState(clamped);
+  }, []);
+
+  const toggleShuffle = useCallback(() => setShuffle((value) => !value), []);
+  const toggleRepeat = useCallback(() => {
+    setRepeat((mode) => (mode === "off" ? "all" : mode === "all" ? "one" : "off"));
+  }, []);
+  const cyclePlaybackMode = useCallback(() => {
+    if (shuffle) {
+      setShuffle(false);
+      setRepeat("all");
+      return;
+    }
+
+    if (repeat === "off") {
+      setShuffle(true);
+      return;
+    }
+
+    setRepeat((mode) => (mode === "all" ? "one" : "off"));
+  }, [repeat, shuffle]);
+
+  return {
+    currentTrack,
+    isPlaying,
+    currentTime,
+    duration,
+    volume,
+    shuffle,
+    repeat,
+    playbackError,
+    selectTrack,
+    playTrack,
+    playPause,
+    next,
+    previous,
+    seek,
+    setVolume,
+    toggleShuffle,
+    toggleRepeat,
+    cyclePlaybackMode
+  };
+}
+
+function randomQueueIndex(length: number, currentIndex: number) {
+  if (length <= 1) {
+    return 0;
+  }
+
+  let index = currentIndex;
+  while (index === currentIndex) {
+    index = Math.floor(Math.random() * length);
+  }
+  return index;
+}
