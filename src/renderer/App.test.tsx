@@ -13,6 +13,7 @@ const scanResult: ScanResult = {
   tracks: [track, folderTrack, secondTrack, thirdTrack],
   warnings: []
 };
+const libraryCacheKey = "local-music-player:library-cache";
 
 let menuHandler: ((command: "choose-folder" | "rescan-library") => void) | null = null;
 
@@ -43,13 +44,23 @@ beforeEach(() => {
 });
 
 describe("App", () => {
-  it("rescans the remembered folder on startup", async () => {
+  it("loads the cached remembered folder on startup without rescanning", async () => {
+    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    expect(window.musicApi.rescanLibrary).not.toHaveBeenCalled();
+  });
+
+  it("rescans the remembered folder on startup when no cache exists", async () => {
     localStorage.setItem("local-music-player:last-folder", rememberedFolder);
 
     render(<App />);
 
     await waitFor(() => expect(window.musicApi.rescanLibrary).toHaveBeenCalledWith(rememberedFolder));
-    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    await waitFor(() => expect(localStorage.getItem(libraryCacheKey)).toBe(JSON.stringify(scanResult)));
   });
 
   it("shows the song list without the large now-playing artwork on the main screen", async () => {
@@ -85,6 +96,7 @@ describe("App", () => {
     });
 
     await waitFor(() => expect(window.musicApi.rescanLibrary).toHaveBeenCalledWith(rememberedFolder));
+    expect(localStorage.getItem(libraryCacheKey)).toBe(JSON.stringify(scanResult));
   });
 
   it("uses the sidebar action area for library categories", async () => {

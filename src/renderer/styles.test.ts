@@ -29,6 +29,38 @@ describe("renderer layout styles", () => {
     expect(rule(css, ".play-button")).toContain("flex: 0 0 50px");
     expect(rule(css, ".play-button")).toContain("border-radius: 999px");
   });
+
+  it("lets the narrow player bar use its full stacked height", async () => {
+    const css = await readStyles();
+
+    expect(mediaRule(css, "@media (max-width: 980px)", ".app-frame")).toContain(
+      "grid-template-rows: minmax(0, 1fr) auto"
+    );
+  });
+
+  it("stacks the player bar before desktop columns can clip the transport controls", async () => {
+    const css = await readStyles();
+
+    expect(mediaRule(css, "@media (max-width: 1260px)", ".player-bar")).toContain("grid-template-columns: 1fr");
+    expect(mediaRule(css, "@media (max-width: 1260px)", ".player-bar")).toContain("height: auto");
+  });
+
+  it("keeps long fullscreen lyrics scrollable inside the viewport", async () => {
+    const css = await readStyles();
+
+    expect(rule(css, ".fullscreen-lyrics")).toContain("height: 100dvh");
+    expect(rule(css, ".fullscreen-lyrics")).toContain("overflow: hidden");
+    expect(rule(css, ".fullscreen-lyrics-column")).toContain("min-height: 0");
+    expect(rule(css, ".fullscreen-lyrics-column")).toContain("max-height: calc(100dvh - clamp(68px, 12vw, 164px))");
+    expect(rule(css, ".fullscreen-lyrics-column")).toContain("overflow-y: auto");
+  });
+
+  it("stacks fullscreen artwork and lyrics without overlap on narrow screens", async () => {
+    const css = await readStyles();
+
+    expect(mediaRule(css, "@media (max-width: 980px)", ".fullscreen-lyrics")).toContain("align-items: start");
+    expect(mediaRule(css, "@media (max-width: 980px)", ".fullscreen-lyrics")).toContain("grid-auto-rows: max-content");
+  });
 });
 
 async function readStyles() {
@@ -38,6 +70,20 @@ async function readStyles() {
 function rule(css: string, selector: string) {
   const match = css.match(new RegExp(`${escapeRegExp(selector)}\\s*\\{([^}]*)\\}`));
   return match?.[1] ?? "";
+}
+
+function mediaRule(css: string, mediaQuery: string, selector: string) {
+  const mediaStart = css.indexOf(mediaQuery);
+  if (mediaStart === -1) {
+    return "";
+  }
+
+  const selectorStart = css.indexOf(selector, mediaStart);
+  if (selectorStart === -1) {
+    return "";
+  }
+
+  return rule(css.slice(selectorStart), selector);
 }
 
 function escapeRegExp(value: string) {

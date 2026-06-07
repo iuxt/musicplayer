@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { ScanProgress, ScanWarning, Track } from "../shared/types";
+import type { ScanProgress, ScanResult, ScanWarning, Track } from "../shared/types";
 import { EmptyState } from "./components/EmptyState";
 import { FullscreenLyrics } from "./components/FullscreenLyrics";
 import { LibraryList } from "./components/LibraryList";
@@ -12,6 +12,7 @@ import { useAudioPlayer } from "./hooks/useAudioPlayer";
 import type { LibraryCategory } from "./libraryCategories";
 
 const LAST_FOLDER_STORAGE_KEY = "local-music-player:last-folder";
+const LIBRARY_CACHE_STORAGE_KEY = "local-music-player:library-cache";
 
 export function App() {
   const [folderPath, setFolderPath] = useState<string | null>(null);
@@ -30,6 +31,17 @@ export function App() {
   const [lyrics, setLyrics] = useState<string | null>(null);
   const [isLyricsLoading, setIsLyricsLoading] = useState(false);
   const [isFullscreenLyricsOpen, setIsFullscreenLyricsOpen] = useState(false);
+
+  const loadLibraryResult = useCallback((result: ScanResult) => {
+    setFolderPath(result.folderPath);
+    setTracks(result.tracks);
+    setWarnings(result.warnings);
+    setPlayQueue(result.tracks);
+    setIsPlayQueueExplicit(false);
+    setPlaylistLabel("Library");
+    setSelectedFolderPath(null);
+    localStorage.setItem(LAST_FOLDER_STORAGE_KEY, result.folderPath);
+  }, []);
 
   const filteredTracks = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -72,20 +84,14 @@ export function App() {
       if (!result) {
         return;
       }
-      setFolderPath(result.folderPath);
-      setTracks(result.tracks);
-      setWarnings(result.warnings);
-      setPlayQueue(result.tracks);
-      setIsPlayQueueExplicit(false);
-      setPlaylistLabel("Library");
-      setSelectedFolderPath(null);
-      localStorage.setItem(LAST_FOLDER_STORAGE_KEY, result.folderPath);
+      loadLibraryResult(result);
+      saveLibraryCache(result);
     } catch (error) {
       setAppError(error instanceof Error ? error.message : "Unable to scan the folder.");
     } finally {
       setIsScanning(false);
     }
-  }, []);
+  }, [loadLibraryResult]);
 
   const rescan = useCallback(async () => {
     if (!folderPath) {
@@ -98,20 +104,14 @@ export function App() {
 
     try {
       const result = await window.musicApi.rescanLibrary(folderPath);
-      setFolderPath(result.folderPath);
-      setTracks(result.tracks);
-      setWarnings(result.warnings);
-      setPlayQueue(result.tracks);
-      setIsPlayQueueExplicit(false);
-      setPlaylistLabel("Library");
-      setSelectedFolderPath(null);
-      localStorage.setItem(LAST_FOLDER_STORAGE_KEY, result.folderPath);
+      loadLibraryResult(result);
+      saveLibraryCache(result);
     } catch (error) {
       setAppError(error instanceof Error ? error.message : "Unable to rescan the folder.");
     } finally {
       setIsScanning(false);
     }
-  }, [folderPath]);
+  }, [folderPath, loadLibraryResult]);
 
   useEffect(() => {
     return window.musicApi.onScanProgress(setScanProgress);
@@ -135,6 +135,12 @@ export function App() {
     }
 
     let cancelled = false;
+    const cachedResult = readLibraryCache(rememberedFolderPath);
+    if (cachedResult) {
+      loadLibraryResult(cachedResult);
+      return;
+    }
+
     setFolderPath(rememberedFolderPath);
     setIsScanning(true);
     setAppError(null);
@@ -146,14 +152,8 @@ export function App() {
         if (cancelled) {
           return;
         }
-        setFolderPath(result.folderPath);
-        setTracks(result.tracks);
-        setWarnings(result.warnings);
-        setPlayQueue(result.tracks);
-        setIsPlayQueueExplicit(false);
-        setPlaylistLabel("Library");
-        setSelectedFolderPath(null);
-        localStorage.setItem(LAST_FOLDER_STORAGE_KEY, result.folderPath);
+        loadLibraryResult(result);
+        saveLibraryCache(result);
       })
       .catch((error) => {
         if (!cancelled) {
@@ -169,7 +169,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadLibraryResult]);
 
   useEffect(() => {
     let cancelled = false;
@@ -330,4 +330,56 @@ export function App() {
       />
     </div>
   );
+}
+
+function saveLibraryCache(result: ScanResult) {
+  localStorage.setItem(LIBRARY_CACHE_STORAGE_KEY, JSON.stringify(result));
+}
+
+function readLibraryCache(folderPath: string): ScanResult | null {
+  const cachedValue = localStorage.getItem(LIBRARY_CACHE_STORAGE_KEY);
+  if (!cachedValue) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(cachedValue) as unknown;
+    return isScanResultForFolder(parsed, folderPath) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function isScanResultForFolder(value: unknown, folderPath: string): value is ScanResult {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return value.folderPath === folderPath && Array.isArray(value.tracks) && value.tracks.every(isTrack) && Array.isArray(value.warnings);
+}
+
+function isTrack(value: unknown): value is Track {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.id === "string" &&
+    typeof value.filePath === "string" &&
+    typeof value.title === "string" &&
+    typeof value.artist === "string" &&
+    typeof value.album === "string" &&
+    typeof value.duration === "number" &&
+    (typeof value.trackNumber === "number" || value.trackNumber === null) &&
+    typeof value.extension === "string" &&
+    (typeof value.artworkId === "string" || value.artworkId === null) &&
+    (typeof value.artworkPath === "string" || value.artworkPath === null) &&
+    (typeof value.lyricsPath === "string" || value.lyricsPath === null) &&
+    typeof value.hasLyrics === "boolean" &&
+    typeof value.folderPath === "string"
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
