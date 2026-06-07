@@ -7,6 +7,7 @@ import { PlayerBar } from "./components/PlayerBar";
 import { Playlist } from "./components/Playlist";
 import { ScanningState } from "./components/ScanningState";
 import { Sidebar } from "./components/Sidebar";
+import { getParentFolderPath, getTracksAtFolderLevel } from "./folderBrowser";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
 import type { LibraryCategory } from "./libraryCategories";
 
@@ -22,6 +23,7 @@ export function App() {
   const [activeCategory, setActiveCategory] = useState<LibraryCategory>("songs");
   const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(null);
   const [playQueue, setPlayQueue] = useState<Track[]>([]);
+  const [isPlayQueueExplicit, setIsPlayQueueExplicit] = useState(false);
   const [playlistLabel, setPlaylistLabel] = useState("Library");
   const [appError, setAppError] = useState<string | null>(null);
   const [artworkUrl, setArtworkUrl] = useState<string | null>(null);
@@ -41,18 +43,24 @@ export function App() {
   }, [search, tracks]);
 
   const visibleTracks = useMemo(() => {
-    if (activeCategory === "folders" && selectedFolderPath) {
-      return filteredTracks.filter((track) => track.folderPath === selectedFolderPath);
+    return filteredTracks;
+  }, [filteredTracks]);
+
+  const playlistTracks = useMemo(() => {
+    if (isPlayQueueExplicit) {
+      return playQueue;
     }
 
-    return filteredTracks;
-  }, [activeCategory, filteredTracks, selectedFolderPath]);
+    return playQueue.length > 0 ? playQueue : filteredTracks;
+  }, [filteredTracks, isPlayQueueExplicit, playQueue]);
 
-  const player = useAudioPlayer(playQueue.length > 0 ? playQueue : filteredTracks);
+  const player = useAudioPlayer(playlistTracks);
 
   useEffect(() => {
-    setPlayQueue((currentQueue) => (currentQueue.length > 0 ? currentQueue : tracks));
-  }, [tracks]);
+    if (!isPlayQueueExplicit) {
+      setPlayQueue((currentQueue) => (currentQueue.length > 0 ? currentQueue : tracks));
+    }
+  }, [isPlayQueueExplicit, tracks]);
 
   const chooseFolder = useCallback(async () => {
     setIsScanning(true);
@@ -68,6 +76,7 @@ export function App() {
       setTracks(result.tracks);
       setWarnings(result.warnings);
       setPlayQueue(result.tracks);
+      setIsPlayQueueExplicit(false);
       setPlaylistLabel("Library");
       setSelectedFolderPath(null);
       localStorage.setItem(LAST_FOLDER_STORAGE_KEY, result.folderPath);
@@ -93,6 +102,7 @@ export function App() {
       setTracks(result.tracks);
       setWarnings(result.warnings);
       setPlayQueue(result.tracks);
+      setIsPlayQueueExplicit(false);
       setPlaylistLabel("Library");
       setSelectedFolderPath(null);
       localStorage.setItem(LAST_FOLDER_STORAGE_KEY, result.folderPath);
@@ -140,6 +150,7 @@ export function App() {
         setTracks(result.tracks);
         setWarnings(result.warnings);
         setPlayQueue(result.tracks);
+        setIsPlayQueueExplicit(false);
         setPlaylistLabel("Library");
         setSelectedFolderPath(null);
         localStorage.setItem(LAST_FOLDER_STORAGE_KEY, result.folderPath);
@@ -212,10 +223,15 @@ export function App() {
     setSelectedFolderPath(nextFolderPath);
   }
 
-  async function playTrack(track: Track) {
-    const nextQueue = activeCategory === "folders" && selectedFolderPath ? visibleTracks : filteredTracks;
+  function backFolder() {
+    setSelectedFolderPath(getParentFolderPath(selectedFolderPath));
+  }
+
+  async function playTrack(track: Track, queueTracks?: Track[]) {
+    const nextQueue = queueTracks ?? (activeCategory === "folders" ? getTracksAtFolderLevel(filteredTracks, selectedFolderPath) : filteredTracks);
     setPlayQueue(nextQueue);
-    setPlaylistLabel(activeCategory === "folders" && selectedFolderPath ? selectedFolderPath : "Library");
+    setIsPlayQueueExplicit(true);
+    setPlaylistLabel(activeCategory === "folders" ? selectedFolderPath ?? "Folders" : "Library");
     await player.playTrack(track);
   }
 
@@ -225,6 +241,16 @@ export function App() {
 
   async function selectTrack(track: Track) {
     await player.selectTrack(track);
+  }
+
+  function clearPlaylist() {
+    setPlayQueue([]);
+    setIsPlayQueueExplicit(true);
+  }
+
+  function removePlaylistTrack(track: Track) {
+    setPlayQueue(playlistTracks.filter((queuedTrack) => queuedTrack.id !== track.id));
+    setIsPlayQueueExplicit(true);
   }
 
   return (
@@ -254,9 +280,16 @@ export function App() {
               onSearchChange={setSearch}
               onSelectTrack={playTrack}
               onOpenFolder={openFolder}
-              onBackToFolders={() => setSelectedFolderPath(null)}
+              onBackToFolders={backFolder}
             />
-            <Playlist tracks={playQueue.length > 0 ? playQueue : filteredTracks} currentTrack={player.currentTrack} label={playlistLabel} onSelectTrack={selectPlaylistTrack} />
+            <Playlist
+              tracks={playlistTracks}
+              currentTrack={player.currentTrack}
+              label={playlistLabel}
+              onSelectTrack={selectPlaylistTrack}
+              onClear={clearPlaylist}
+              onRemoveTrack={removePlaylistTrack}
+            />
           </div>
         )}
       </main>

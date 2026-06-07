@@ -5,11 +5,12 @@ import { App } from "./App";
 
 const rememberedFolder = "/Users/test/Music";
 const track = makeTrack("wav-1", "Wave Song", "Artist", "Wave Album", "Wave Album");
+const folderTrack = makeTrack("mp3-folder", "Artist Folder Song", "Second Artist", "Loose Songs", "Second Artist");
 const secondTrack = makeTrack("mp3-1", "Second Song", "Second Artist", "Second Album", "Second Artist/Second Album");
 const thirdTrack = makeTrack("mp3-2", "Third Song", "Second Artist", "Second Album", "Second Artist/Second Album");
 const scanResult: ScanResult = {
   folderPath: rememberedFolder,
-  tracks: [track, secondTrack, thirdTrack],
+  tracks: [track, folderTrack, secondTrack, thirdTrack],
   warnings: []
 };
 
@@ -108,10 +109,12 @@ describe("App", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Folders" }));
     expect(await screen.findByRole("heading", { name: "Folders" })).toBeTruthy();
-    expect(screen.getByText("Second Artist/Second Album")).toBeTruthy();
+    const library = screen.getByRole("region", { name: "Library browser" });
+    expect(within(library).getByRole("button", { name: /Second Artist.*3 songs.*Open/ })).toBeTruthy();
+    expect(within(library).queryByText("Second Artist/Second Album")).toBeNull();
   });
 
-  it("opens a folder, plays a song, and makes that folder the playlist", async () => {
+  it("drills into folders one level at a time and shows current-layer songs", async () => {
     localStorage.setItem("local-music-player:last-folder", rememberedFolder);
 
     render(<App />);
@@ -119,11 +122,21 @@ describe("App", () => {
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
 
     fireEvent.click(screen.getByRole("button", { name: "Folders" }));
-    fireEvent.click(screen.getByRole("button", { name: "01 Second Artist/Second Album Second Album 2 songs Play" }));
+    let library = screen.getByRole("region", { name: "Library browser" });
+    fireEvent.click(within(library).getByRole("button", { name: /Second Artist.*3 songs.*Open/ }));
+
+    expect(await screen.findByRole("heading", { name: "Second Artist" })).toBeTruthy();
+    library = screen.getByRole("region", { name: "Library browser" });
+    expect(within(library).getByRole("button", { name: /Second Album.*2 songs.*Open/ })).toBeTruthy();
+    expect(within(library).getByText("Artist Folder Song")).toBeTruthy();
+    expect(within(library).queryByText("Second Song")).toBeNull();
+
+    fireEvent.click(within(library).getByRole("button", { name: /Second Album.*2 songs.*Open/ }));
 
     expect(await screen.findByRole("heading", { name: "Second Artist/Second Album" })).toBeTruthy();
-    const library = screen.getByRole("region", { name: "Library browser" });
+    library = screen.getByRole("region", { name: "Library browser" });
     expect(within(library).queryByText("Wave Song")).toBeNull();
+    expect(within(library).queryByText("Artist Folder Song")).toBeNull();
     expect(within(library).getByText("Second Song")).toBeTruthy();
     expect(within(library).getByText("Third Song")).toBeTruthy();
 
@@ -133,6 +146,60 @@ describe("App", () => {
     expect(HTMLMediaElement.prototype.play).toHaveBeenCalled();
 
     const playlist = screen.getByRole("region", { name: "Playlist" });
+    expect(within(playlist).getByText("Second Song")).toBeTruthy();
+    expect(within(playlist).getByText("Third Song")).toBeTruthy();
+    expect(within(playlist).queryByText("Wave Song")).toBeNull();
+  });
+
+  it("removes a track from the playlist without removing it from the library", async () => {
+    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    const playlist = screen.getByRole("region", { name: "Playlist" });
+
+    await act(async () => {
+      fireEvent.click(within(playlist).getByRole("button", { name: "Remove Wave Song from playlist" }));
+    });
+
+    expect(within(playlist).queryByText("Wave Song")).toBeNull();
+    expect(within(screen.getByRole("region", { name: "Library browser" })).getByText("Wave Song")).toBeTruthy();
+  });
+
+  it("clears the playlist and keeps the library tracks visible", async () => {
+    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    const playlist = screen.getByRole("region", { name: "Playlist" });
+
+    await act(async () => {
+      fireEvent.click(within(playlist).getByRole("button", { name: "Clear playlist" }));
+    });
+
+    expect(within(playlist).getByText("Queue is empty")).toBeTruthy();
+    expect(within(playlist).queryByText("Wave Song")).toBeNull();
+    expect(within(playlist).queryByText("Second Song")).toBeNull();
+    expect(within(screen.getByRole("region", { name: "Library browser" })).getByText("Wave Song")).toBeTruthy();
+  });
+
+  it("queues only the selected artist when playing an artist group", async () => {
+    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole("button", { name: "Artists" }));
+
+    const library = screen.getByRole("region", { name: "Library browser" });
+    await act(async () => {
+      fireEvent.click(within(library).getByRole("button", { name: /Second Artist.*3 songs.*Play/ }));
+    });
+
+    const playlist = screen.getByRole("region", { name: "Playlist" });
+    expect(within(playlist).getByText("Artist Folder Song")).toBeTruthy();
     expect(within(playlist).getByText("Second Song")).toBeTruthy();
     expect(within(playlist).getByText("Third Song")).toBeTruthy();
     expect(within(playlist).queryByText("Wave Song")).toBeNull();

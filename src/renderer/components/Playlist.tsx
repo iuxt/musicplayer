@@ -1,4 +1,4 @@
-import { ListMusic } from "lucide-react";
+import { ListMusic, Trash2, X } from "lucide-react";
 import type { Track } from "../../shared/types";
 
 interface PlaylistProps {
@@ -6,9 +6,11 @@ interface PlaylistProps {
   currentTrack: Track | null;
   label: string;
   onSelectTrack: (track: Track) => void;
+  onClear: () => void;
+  onRemoveTrack: (track: Track) => void;
 }
 
-export function Playlist({ tracks, currentTrack, label, onSelectTrack }: PlaylistProps) {
+export function Playlist({ tracks, currentTrack, label, onSelectTrack, onClear, onRemoveTrack }: PlaylistProps) {
   return (
     <section className="playlist-panel" aria-label="Playlist">
       <div className="playlist-heading">
@@ -16,23 +18,41 @@ export function Playlist({ tracks, currentTrack, label, onSelectTrack }: Playlis
           <p className="eyebrow">Queue</p>
           <h2>Playlist</h2>
         </div>
-        <ListMusic size={18} />
+        <div className="playlist-heading-actions">
+          {tracks.length > 0 ? (
+            <button aria-label="Clear playlist" className="playlist-icon-button" onClick={onClear} title="Clear playlist" type="button">
+              <Trash2 size={16} />
+            </button>
+          ) : null}
+          <ListMusic size={18} />
+        </div>
       </div>
       <p className="playlist-label">{label}</p>
 
       <div className="playlist-list">
-        {tracks.map((track, index) => (
-          <button
-            className={`playlist-row ${currentTrack?.id === track.id ? "active" : ""}`}
-            key={track.id}
-            onClick={() => onSelectTrack(track)}
-            type="button"
-          >
-            <span>{String(index + 1).padStart(2, "0")}</span>
-            <strong>{track.title}</strong>
-            <small>{track.artist}</small>
-          </button>
-        ))}
+        {tracks.length === 0 ? <p className="playlist-empty">Queue is empty</p> : null}
+        {tracks.map((track, index) => {
+          const rowNumber = String(index + 1).padStart(2, "0");
+
+          return (
+            <div className={`playlist-row ${currentTrack?.id === track.id ? "active" : ""}`} key={track.id}>
+              <button className="playlist-track-button" onClick={() => onSelectTrack(track)} type="button">
+                <span className="playlist-row-index">{rowNumber}</span>
+                <strong>{track.title}</strong>
+                <small>{track.artist}</small>
+              </button>
+              <button
+                aria-label={`Remove ${track.title} from playlist`}
+                className="playlist-icon-button playlist-remove-button"
+                onClick={() => onRemoveTrack(track)}
+                title={`Remove ${track.title} from playlist`}
+                type="button"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          );
+        })}
       </div>
     </section>
   );

@@ -1,5 +1,6 @@
 import { ChevronLeft, Search } from "lucide-react";
 import type { Track } from "../../shared/types";
+import { buildFolderBrowserRows } from "../folderBrowser";
 import type { LibraryCategory } from "../libraryCategories";
 
 interface LibraryListProps {
@@ -9,7 +10,7 @@ interface LibraryListProps {
   search: string;
   selectedFolderPath: string | null;
   onSearchChange: (value: string) => void;
-  onSelectTrack: (track: Track) => void;
+  onSelectTrack: (track: Track, queueTracks?: Track[]) => void;
   onOpenFolder: (folderPath: string) => void;
   onBackToFolders: () => void;
 }
@@ -33,7 +34,8 @@ export function LibraryList({
   onBackToFolders
 }: LibraryListProps) {
   const isFolderDetail = category === "folders" && Boolean(selectedFolderPath);
-  const groups = category === "songs" ? [] : buildGroups(tracks, category);
+  const groups = category !== "songs" && category !== "folders" ? buildGroups(tracks, category) : [];
+  const folderRows = category === "folders" ? buildFolderBrowserRows(tracks, selectedFolderPath) : [];
   const heading = isFolderDetail ? selectedFolderPath : headings[category];
 
   return (
@@ -61,33 +63,39 @@ export function LibraryList({
       ) : null}
 
       <div className="track-list">
-        {category === "songs" || isFolderDetail
+        {category === "songs"
           ? tracks.map((track, index) => (
-              <button
-                className={`track-row ${currentTrack?.id === track.id ? "active" : ""}`}
-                key={track.id}
-                onClick={() => onSelectTrack(track)}
-                type="button"
-              >
-                <span className="track-index">{String(index + 1).padStart(2, "0")}</span>
-                <span className="track-title">
-                  <strong>{track.title}</strong>
-                  <small>{track.artist}</small>
-                </span>
-                <span className="track-album">{track.album}</span>
-                <span className="track-duration">{formatDuration(track.duration)}</span>
-              </button>
+              <TrackRow currentTrack={currentTrack} index={index} key={track.id} onSelectTrack={onSelectTrack} track={track} />
             ))
+          : null}
+
+        {category === "folders"
+          ? folderRows.map((row, index) =>
+              row.type === "folder" ? (
+                <button
+                  className="track-row category-row"
+                  key={row.key}
+                  onClick={() => onOpenFolder(row.path)}
+                  type="button"
+                >
+                  <span className="track-index">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="track-title">
+                    <strong>{row.label}</strong>
+                    <small>{row.detail}</small>
+                  </span>
+                  <span className="track-album">{row.tracks.length} songs</span>
+                  <span className="track-duration">Open</span>
+                </button>
+              ) : (
+                <TrackRow currentTrack={currentTrack} index={index} key={row.key} onSelectTrack={onSelectTrack} track={row.track} />
+              )
+            )
           : groups.map((group, index) => (
               <button
                 className="track-row category-row"
                 key={group.key}
                 onClick={() => {
-                  if (category === "folders") {
-                    onOpenFolder(group.label);
-                    return;
-                  }
-                  onSelectTrack(group.tracks[0]);
+                  onSelectTrack(group.tracks[0], group.tracks);
                 }}
                 type="button"
               >
@@ -105,7 +113,35 @@ export function LibraryList({
   );
 }
 
-function buildGroups(tracks: Track[], category: Exclude<LibraryCategory, "songs">) {
+function TrackRow({
+  currentTrack,
+  index,
+  track,
+  onSelectTrack
+}: {
+  currentTrack: Track | null;
+  index: number;
+  track: Track;
+  onSelectTrack: (track: Track, queueTracks?: Track[]) => void;
+}) {
+  return (
+    <button
+      className={`track-row ${currentTrack?.id === track.id ? "active" : ""}`}
+      onClick={() => onSelectTrack(track)}
+      type="button"
+    >
+      <span className="track-index">{String(index + 1).padStart(2, "0")}</span>
+      <span className="track-title">
+        <strong>{track.title}</strong>
+        <small>{track.artist}</small>
+      </span>
+      <span className="track-album">{track.album}</span>
+      <span className="track-duration">{formatDuration(track.duration)}</span>
+    </button>
+  );
+}
+
+function buildGroups(tracks: Track[], category: Exclude<LibraryCategory, "songs" | "folders">) {
   const groups = new Map<string, Track[]>();
 
   for (const track of tracks) {
@@ -134,22 +170,16 @@ function buildGroups(tracks: Track[], category: Exclude<LibraryCategory, "songs"
     .sort((first, second) => first.label.localeCompare(second.label));
 }
 
-function getGroupLabel(track: Track, category: Exclude<LibraryCategory, "songs">) {
+function getGroupLabel(track: Track, category: Exclude<LibraryCategory, "songs" | "folders">) {
   if (category === "albums") {
     return track.album;
   }
-  if (category === "artists") {
-    return track.artist;
-  }
-  return track.folderPath || "Music Folder";
+  return track.artist;
 }
 
-function getGroupDetail(tracks: Track[], category: Exclude<LibraryCategory, "songs">) {
+function getGroupDetail(tracks: Track[], category: Exclude<LibraryCategory, "songs" | "folders">) {
   if (category === "albums") {
     return unique(tracks.map((track) => track.artist)).join(", ");
-  }
-  if (category === "artists") {
-    return unique(tracks.map((track) => track.album)).join(", ");
   }
   return unique(tracks.map((track) => track.album)).join(", ");
 }
