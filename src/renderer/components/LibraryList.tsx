@@ -1,7 +1,9 @@
 import { ChevronLeft, Search } from "lucide-react";
+import { memo, useMemo } from "react";
 import type { Track } from "../../shared/types";
 import { buildFolderBrowserRows } from "../folderBrowser";
 import type { LibraryCategory } from "../libraryCategories";
+import { VirtualizedList } from "./VirtualizedList";
 
 interface LibraryListProps {
   category: LibraryCategory;
@@ -22,7 +24,7 @@ const headings: Record<LibraryCategory, string> = {
   folders: "Folders"
 };
 
-export function LibraryList({
+export const LibraryList = memo(function LibraryList({
   category,
   tracks,
   currentTrack,
@@ -34,8 +36,14 @@ export function LibraryList({
   onBackToFolders
 }: LibraryListProps) {
   const isFolderDetail = category === "folders" && Boolean(selectedFolderPath);
-  const groups = category !== "songs" && category !== "folders" ? buildGroups(tracks, category) : [];
-  const folderRows = category === "folders" ? buildFolderBrowserRows(tracks, selectedFolderPath) : [];
+  const groups = useMemo(
+    () => (category !== "songs" && category !== "folders" ? buildGroups(tracks, category) : []),
+    [category, tracks]
+  );
+  const folderRows = useMemo(
+    () => (category === "folders" ? buildFolderBrowserRows(tracks, selectedFolderPath) : []),
+    [category, selectedFolderPath, tracks]
+  );
   const heading = isFolderDetail ? selectedFolderPath : headings[category];
 
   return (
@@ -62,56 +70,66 @@ export function LibraryList({
         </button>
       ) : null}
 
-      <div className="track-list">
-        {category === "songs"
-          ? tracks.map((track, index) => (
-              <TrackRow currentTrack={currentTrack} index={index} key={track.id} onSelectTrack={onSelectTrack} track={track} />
-            ))
-          : null}
-
-        {category === "folders"
-          ? folderRows.map((row, index) =>
-              row.type === "folder" ? (
-                <button
-                  className="track-row category-row"
-                  key={row.key}
-                  onClick={() => onOpenFolder(row.path)}
-                  type="button"
-                >
-                  <span className="track-index">{String(index + 1).padStart(2, "0")}</span>
-                  <span className="track-title">
-                    <strong>{row.label}</strong>
-                    <small>{row.detail}</small>
-                  </span>
-                  <span className="track-album">{row.tracks.length} songs</span>
-                  <span className="track-duration">Open</span>
-                </button>
-              ) : (
-                <TrackRow currentTrack={currentTrack} index={index} key={row.key} onSelectTrack={onSelectTrack} track={row.track} />
-              )
-            )
-          : groups.map((group, index) => (
-              <button
-                className="track-row category-row"
-                key={group.key}
-                onClick={() => {
-                  onSelectTrack(group.tracks[0], group.tracks);
-                }}
-                type="button"
-              >
+      {category === "songs" ? (
+        <VirtualizedList
+          className="track-list"
+          estimatedRowHeight={62}
+          items={tracks}
+          getKey={(track) => track.id}
+          renderItem={(track, index) => (
+            <TrackRow currentTrack={currentTrack} index={index} onSelectTrack={onSelectTrack} track={track} />
+          )}
+        />
+      ) : category === "folders" ? (
+        <VirtualizedList
+          className="track-list"
+          estimatedRowHeight={62}
+          items={folderRows}
+          getKey={(row) => row.key}
+          renderItem={(row, index) =>
+            row.type === "folder" ? (
+              <button className="track-row category-row" onClick={() => onOpenFolder(row.path)} type="button">
                 <span className="track-index">{String(index + 1).padStart(2, "0")}</span>
                 <span className="track-title">
-                  <strong>{group.label}</strong>
-                  <small>{group.detail}</small>
+                  <strong>{row.label}</strong>
+                  <small>{row.detail}</small>
                 </span>
-                <span className="track-album">{group.tracks.length} songs</span>
-                <span className="track-duration">Play</span>
+                <span className="track-album">{row.tracks.length} songs</span>
+                <span className="track-duration">Open</span>
               </button>
-            ))}
-      </div>
+            ) : (
+              <TrackRow currentTrack={currentTrack} index={index} onSelectTrack={onSelectTrack} track={row.track} />
+            )
+          }
+        />
+      ) : (
+        <VirtualizedList
+          className="track-list"
+          estimatedRowHeight={62}
+          items={groups}
+          getKey={(group) => group.key}
+          renderItem={(group, index) => (
+            <button
+              className="track-row category-row"
+              onClick={() => {
+                onSelectTrack(group.tracks[0], group.tracks);
+              }}
+              type="button"
+            >
+              <span className="track-index">{String(index + 1).padStart(2, "0")}</span>
+              <span className="track-title">
+                <strong>{group.label}</strong>
+                <small>{group.detail}</small>
+              </span>
+              <span className="track-album">{group.tracks.length} songs</span>
+              <span className="track-duration">Play</span>
+            </button>
+          )}
+        />
+      )}
     </section>
   );
-}
+});
 
 function TrackRow({
   currentTrack,

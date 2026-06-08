@@ -1,5 +1,7 @@
 import { ListMusic, Trash2, X } from "lucide-react";
+import { memo } from "react";
 import type { Track } from "../../shared/types";
+import { VirtualizedList } from "./VirtualizedList";
 
 interface PlaylistProps {
   tracks: Track[];
@@ -10,7 +12,7 @@ interface PlaylistProps {
   onRemoveTrack: (track: Track) => void;
 }
 
-export function Playlist({ tracks, currentTrack, label, onSelectTrack, onClear, onRemoveTrack }: PlaylistProps) {
+export const Playlist = memo(function Playlist({ tracks, currentTrack, label, onSelectTrack, onClear, onRemoveTrack }: PlaylistProps) {
   return (
     <section className="playlist-panel" aria-label="Playlist">
       <div className="playlist-heading">
@@ -29,13 +31,17 @@ export function Playlist({ tracks, currentTrack, label, onSelectTrack, onClear, 
       </div>
       <p className="playlist-label">{label}</p>
 
-      <div className="playlist-list">
-        {tracks.length === 0 ? <p className="playlist-empty">Queue is empty</p> : null}
-        {tracks.map((track, index) => {
+      <VirtualizedList
+        className="playlist-list"
+        estimatedRowHeight={58}
+        items={tracks}
+        getKey={(track) => track.id}
+        emptyState={<p className="playlist-empty">Queue is empty</p>}
+        renderItem={(track, index) => {
           const rowNumber = String(index + 1).padStart(2, "0");
 
           return (
-            <div className={`playlist-row ${currentTrack?.id === track.id ? "active" : ""}`} key={track.id}>
+            <div className={`playlist-row ${currentTrack?.id === track.id ? "active" : ""}`}>
               <button className="playlist-track-button" onClick={() => onSelectTrack(track)} type="button">
                 <span className="playlist-row-index">{rowNumber}</span>
                 <strong>{track.title}</strong>
@@ -52,8 +58,8 @@ export function Playlist({ tracks, currentTrack, label, onSelectTrack, onClear, 
               </button>
             </div>
           );
-        })}
-      </div>
+        }}
+      />
     </section>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ScanProgress, ScanResult, ScanWarning, Track } from "../shared/types";
 import { EmptyState } from "./components/EmptyState";
 import { FullscreenLyrics } from "./components/FullscreenLyrics";
@@ -14,6 +14,7 @@ import type { LibraryCategory } from "./libraryCategories";
 const LAST_FOLDER_STORAGE_KEY = "local-music-player:last-folder";
 const LIBRARY_CACHE_STORAGE_KEY = "local-music-player:library-cache";
 const PLAYBACK_STATE_STORAGE_KEY = "local-music-player:playback-state";
+const PLAYBACK_PROGRESS_SAVE_INTERVAL_MS = 5000;
 
 type PlaybackState = {
   trackId: string;
@@ -41,6 +42,21 @@ export function App() {
   const [isLyricsLoading, setIsLyricsLoading] = useState(false);
   const [isFullscreenLyricsOpen, setIsFullscreenLyricsOpen] = useState(false);
   const [pendingPlaybackRestore, setPendingPlaybackRestore] = useState<PlaybackState | null>(null);
+  const lastPlaybackSaveRef = useRef<{
+    trackId: string | null;
+    queueKey: string;
+    isPlayQueueExplicit: boolean;
+    playlistLabel: string;
+    savedAt: number;
+    wasPlaying: boolean;
+  }>({
+    trackId: null,
+    queueKey: "",
+    isPlayQueueExplicit: false,
+    playlistLabel: "",
+    savedAt: 0,
+    wasPlaying: false
+  });
 
   const loadLibraryResult = useCallback((result: ScanResult) => {
     setFolderPath(result.folderPath);
@@ -91,6 +107,8 @@ export function App() {
 
     return playQueue.length > 0 ? playQueue : filteredTracks;
   }, [filteredTracks, isPlayQueueExplicit, playQueue]);
+  const playlistTrackIds = useMemo(() => playlistTracks.map((track) => track.id), [playlistTracks]);
+  const playlistQueueKey = useMemo(() => playlistTrackIds.join("\u0000"), [playlistTrackIds]);
 
   const player = useAudioPlayer(playlistTracks);
 
@@ -114,14 +132,45 @@ export function App() {
       return;
     }
 
+    const now = Date.now();
+    const lastSave = lastPlaybackSaveRef.current;
+    const shouldSave =
+      lastSave.trackId !== player.currentTrack.id ||
+      lastSave.queueKey !== playlistQueueKey ||
+      lastSave.isPlayQueueExplicit !== isPlayQueueExplicit ||
+      lastSave.playlistLabel !== playlistLabel ||
+      (lastSave.wasPlaying && !player.isPlaying) ||
+      now - lastSave.savedAt >= PLAYBACK_PROGRESS_SAVE_INTERVAL_MS;
+
+    if (!shouldSave) {
+      return;
+    }
+
     savePlaybackState({
       trackId: player.currentTrack.id,
       currentTime: clampPlaybackTime(player.currentTime, player.currentTrack.duration),
-      queueTrackIds: playlistTracks.map((track) => track.id),
+      queueTrackIds: playlistTrackIds,
       isPlayQueueExplicit,
       playlistLabel
     });
-  }, [isPlayQueueExplicit, player.currentTime, player.currentTrack, playlistLabel, playlistTracks]);
+
+    lastPlaybackSaveRef.current = {
+      trackId: player.currentTrack.id,
+      queueKey: playlistQueueKey,
+      isPlayQueueExplicit,
+      playlistLabel,
+      savedAt: now,
+      wasPlaying: player.isPlaying
+    };
+  }, [
+    isPlayQueueExplicit,
+    player.currentTime,
+    player.currentTrack,
+    player.isPlaying,
+    playlistLabel,
+    playlistQueueKey,
+    playlistTrackIds
+  ]);
 
   useEffect(() => {
     if (!isPlayQueueExplicit) {
@@ -267,49 +316,54 @@ export function App() {
     };
   }, [player.currentTrack]);
 
-  function changeCategory(category: LibraryCategory) {
+  const changeCategory = useCallback((category: LibraryCategory) => {
     setActiveCategory(category);
     if (category !== "folders") {
       setSelectedFolderPath(null);
     }
-  }
+  }, []);
 
-  function openFolder(nextFolderPath: string) {
+  const openFolder = useCallback((nextFolderPath: string) => {
     setSelectedFolderPath(nextFolderPath);
-  }
+  }, []);
 
-  function backFolder() {
+  const backFolder = useCallback(() => {
     setSelectedFolderPath(getParentFolderPath(selectedFolderPath));
-  }
+  }, [selectedFolderPath]);
 
-  async function playTrack(track: Track, queueTracks?: Track[]) {
-    const nextQueue = queueTracks ?? (activeCategory === "folders" ? getTracksAtFolderLevel(filteredTracks, selectedFolderPath) : filteredTracks);
-    setPlayQueue(nextQueue);
-    setIsPlayQueueExplicit(true);
-    setPlaylistLabel(activeCategory === "folders" ? selectedFolderPath ?? "Folders" : "Library");
+  const playTrack = useCallback(
+    async (track: Track, queueTracks?: Track[]) => {
+      const nextQueue =
+        queueTracks ?? (activeCategory === "folders" ? getTracksAtFolderLevel(filteredTracks, selectedFolderPath) : filteredTracks);
+      setPlayQueue(nextQueue);
+      setIsPlayQueueExplicit(true);
+      setPlaylistLabel(activeCategory === "folders" ? selectedFolderPath ?? "Folders" : "Library");
+      await player.playTrack(track);
+    },
+    [activeCategory, filteredTracks, player.playTrack, selectedFolderPath]
+  );
+
+  const selectPlaylistTrack = useCallback(async (track: Track) => {
     await player.playTrack(track);
-  }
+  }, [player.playTrack]);
 
-  async function selectPlaylistTrack(track: Track) {
-    await player.playTrack(track);
-  }
-
-  async function selectTrack(track: Track) {
+  const selectTrack = useCallback(async (track: Track) => {
     await player.selectTrack(track);
-  }
+  }, [player.selectTrack]);
 
-  function clearPlaylist() {
+  const clearPlaylist = useCallback(() => {
     setPlayQueue([]);
     setIsPlayQueueExplicit(true);
-  }
+  }, []);
 
-  function removePlaylistTrack(track: Track) {
+  const removePlaylistTrack = useCallback((track: Track) => {
     setPlayQueue(playlistTracks.filter((queuedTrack) => queuedTrack.id !== track.id));
     setIsPlayQueueExplicit(true);
-  }
+  }, [playlistTracks]);
 
   return (
     <div className="app-frame">
+      <div className="window-drag-region" aria-hidden="true" />
       <Sidebar
         folderPath={folderPath}
         trackCount={tracks.length}

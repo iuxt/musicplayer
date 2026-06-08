@@ -7,6 +7,7 @@ import type { ScanProgress, ScanResult, ScanWarning, SupportedAudioExtension, Tr
 const supportedExtensions = new Set<SupportedAudioExtension>(["mp3", "m4a", "aac", "wav", "flac", "ogg"]);
 const supportedArtworkExtensions = new Set(["jpg", "jpeg", "png", "webp"]);
 const preferredArtworkNames = ["cover", "folder", "front"];
+const progressTrackInterval = 16;
 
 interface ScanOptions {
   onProgress?: (progress: ScanProgress) => void;
@@ -15,6 +16,7 @@ interface ScanOptions {
 export async function scanMusicFolder(folderPath: string, options: ScanOptions = {}): Promise<ScanResult> {
   const tracks: Track[] = [];
   const warnings: ScanWarning[] = [];
+  let lastProgress: ScanProgress | null = null;
 
   async function walk(currentFolder: string) {
     let entries;
@@ -30,6 +32,7 @@ export async function scanMusicFolder(folderPath: string, options: ScanOptions =
     }
 
     report(currentFolder);
+    const siblingFileNames = entries.map((folderEntry) => folderEntry.name);
 
     for (const entry of entries) {
       const entryPath = path.join(currentFolder, entry.name);
@@ -47,21 +50,39 @@ export async function scanMusicFolder(folderPath: string, options: ScanOptions =
         continue;
       }
 
-      const track = await buildTrack(entryPath, folderPath, extension, entries.map((folderEntry) => folderEntry.name));
+      const track = await buildTrack(entryPath, folderPath, extension, siblingFileNames);
       tracks.push(track);
       report(currentFolder);
     }
   }
 
-  function report(currentFolder: string) {
-    options.onProgress?.({
+  function report(currentFolder: string, force = false) {
+    if (!options.onProgress) {
+      return;
+    }
+
+    const progress: ScanProgress = {
       currentFolder,
       discoveredTracks: tracks.length,
       warningCount: warnings.length
-    });
+    };
+    const shouldReport =
+      force ||
+      lastProgress === null ||
+      progress.currentFolder !== lastProgress.currentFolder ||
+      progress.warningCount !== lastProgress.warningCount ||
+      progress.discoveredTracks - lastProgress.discoveredTracks >= progressTrackInterval;
+
+    if (!shouldReport) {
+      return;
+    }
+
+    lastProgress = progress;
+    options.onProgress(progress);
   }
 
   await walk(folderPath);
+  report(folderPath, true);
 
   return {
     folderPath,
@@ -130,9 +151,9 @@ function findLyricsPath(filePath: string, fallbackTitle: string, siblingFileName
   const candidates = new Set([
     `${path.basename(filePath, path.extname(filePath))}.lrc`,
     `${fallbackTitle}.lrc`
-  ]);
+  ].map((candidate) => candidate.toLowerCase()));
 
-  const match = siblingFileNames.find((name) => candidates.has(name) || candidates.has(name.toLowerCase()));
+  const match = siblingFileNames.find((name) => candidates.has(name.toLowerCase()));
   return match ? path.join(directory, match) : null;
 }
 

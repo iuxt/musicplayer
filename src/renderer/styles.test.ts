@@ -22,6 +22,14 @@ describe("renderer layout styles", () => {
     expect(rule(css, ".player-bar")).not.toContain("backdrop-filter");
   });
 
+  it("reserves the top chrome as an Electron drag region", async () => {
+    const css = await readStyles();
+
+    expect(rule(css, ".window-drag-region")).toContain("-webkit-app-region: drag");
+    expect(rule(css, ".window-drag-region")).toContain("user-select: none");
+    expect(rule(css, ".window-drag-region")).toContain("position: fixed");
+  });
+
   it("keeps the central play button circular inside the transport row", async () => {
     const css = await readStyles();
 

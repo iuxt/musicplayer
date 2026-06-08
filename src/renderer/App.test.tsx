@@ -17,9 +17,19 @@ const libraryCacheKey = "local-music-player:library-cache";
 const playbackStateKey = "local-music-player:playback-state";
 
 let menuHandler: ((command: "choose-folder" | "rescan-library") => void) | null = null;
+let createdAudioElements: HTMLAudioElement[] = [];
 
 beforeEach(() => {
   localStorage.clear();
+  createdAudioElements = [];
+  vi.stubGlobal(
+    "Audio",
+    vi.fn(() => {
+      const audio = document.createElement("audio");
+      createdAudioElements.push(audio);
+      return audio;
+    })
+  );
   Object.defineProperty(HTMLMediaElement.prototype, "play", {
     configurable: true,
     value: vi.fn().mockResolvedValue(undefined)
@@ -45,6 +55,12 @@ beforeEach(() => {
 });
 
 describe("App", () => {
+  it("renders a dedicated window drag region at the top of the app", () => {
+    render(<App />);
+
+    expect(document.querySelector(".window-drag-region")?.getAttribute("aria-hidden")).toBe("true");
+  });
+
   it("loads the cached remembered folder on startup without rescanning", async () => {
     localStorage.setItem("local-music-player:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
@@ -88,6 +104,42 @@ describe("App", () => {
     expect(within(playlist).getByText("Second Song")).toBeTruthy();
     expect(within(playlist).getByText("Third Song")).toBeTruthy();
     expect(within(playlist).queryByText("Wave Song")).toBeNull();
+  });
+
+  it("throttles playback progress persistence while a track is playing", async () => {
+    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+    const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    });
+
+    await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenCalledWith(track.filePath));
+    await waitFor(() => expect(playbackStateWriteCount(setItemSpy)).toBeGreaterThan(0));
+    const writesAfterTrackSelection = playbackStateWriteCount(setItemSpy);
+    const audio = createdAudioElements[0];
+
+    await act(async () => {
+      audio.currentTime = 1;
+      audio.dispatchEvent(new Event("timeupdate"));
+    });
+    await waitFor(() => expect(screen.getByText("0:01")).toBeTruthy());
+    await act(async () => {
+      audio.currentTime = 2;
+      audio.dispatchEvent(new Event("timeupdate"));
+    });
+    await waitFor(() => expect(screen.getByText("0:02")).toBeTruthy());
+    await act(async () => {
+      audio.currentTime = 3;
+      audio.dispatchEvent(new Event("timeupdate"));
+    });
+    await waitFor(() => expect(screen.getByText("0:03")).toBeTruthy());
+
+    expect(playbackStateWriteCount(setItemSpy) - writesAfterTrackSelection).toBeLessThanOrEqual(1);
   });
 
   it("ignores a saved playback track that is missing from the restored library", async () => {
@@ -282,4 +334,8 @@ function makeTrack(id: string, title: string, artist: string, album: string, fol
     hasLyrics: false,
     folderPath
   };
+}
+
+function playbackStateWriteCount(spy: ReturnType<typeof vi.spyOn>) {
+  return spy.mock.calls.filter(([key]) => key === playbackStateKey).length;
 }

@@ -58,6 +58,38 @@ describe("scanMusicFolder", () => {
     });
   });
 
+  it("matches sidecar lyrics without requiring identical filename casing", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "music-lyrics-case-"));
+    await writeFile(path.join(root, "Song.flac"), "not-real-audio");
+    const lyricsPath = path.join(root, "song.lrc");
+    await writeFile(lyricsPath, "[00:01.00]case-insensitive lyrics");
+
+    const result = await scanMusicFolder(root);
+
+    expect(result.tracks[0]).toMatchObject({
+      title: "Song",
+      lyricsPath,
+      hasLyrics: true
+    });
+  });
+
+  it("coalesces scan progress for large folders", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "music-progress-"));
+    await Promise.all(
+      Array.from({ length: 100 }, (_, index) => writeFile(path.join(root, `track-${index}.mp3`), "not-real-audio"))
+    );
+    let progressCount = 0;
+
+    const result = await scanMusicFolder(root, {
+      onProgress: () => {
+        progressCount += 1;
+      }
+    });
+
+    expect(result.tracks).toHaveLength(100);
+    expect(progressCount).toBeLessThan(25);
+  });
+
   it("writes embedded artwork to a stable cache file", async () => {
     const trackPath = path.join(await mkdtemp(path.join(os.tmpdir(), "embedded-art-")), "song.mp3");
     await writeFile(trackPath, "not-real-audio");
