@@ -142,6 +142,86 @@ describe("App", () => {
     expect(playbackStateWriteCount(setItemSpy) - writesAfterTrackSelection).toBeLessThanOrEqual(1);
   });
 
+  it("advances to the next playlist track when the current track ends", async () => {
+    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    });
+
+    await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenCalledWith(track.filePath));
+    const audio = createdAudioElements[createdAudioElements.length - 1];
+
+    await act(async () => {
+      audio.dispatchEvent(new Event("ended"));
+    });
+
+    await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenLastCalledWith(folderTrack.filePath));
+    expect(within(screen.getByRole("contentinfo")).getByText("Artist Folder Song")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy();
+  });
+
+  it("advances when playback reaches the track duration without an ended event", async () => {
+    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    });
+
+    await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenCalledWith(track.filePath));
+    const audio = createdAudioElements[createdAudioElements.length - 1];
+    Object.defineProperty(audio, "duration", {
+      configurable: true,
+      value: track.duration
+    });
+
+    await act(async () => {
+      audio.currentTime = track.duration;
+      audio.dispatchEvent(new Event("timeupdate"));
+    });
+
+    await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenLastCalledWith(folderTrack.filePath));
+    expect(within(screen.getByRole("contentinfo")).getByText("Artist Folder Song")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy();
+  });
+
+  it("does not skip an extra track when end-of-track signals fire together", async () => {
+    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    });
+
+    await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenCalledWith(track.filePath));
+    const audio = createdAudioElements[createdAudioElements.length - 1];
+    Object.defineProperty(audio, "duration", {
+      configurable: true,
+      value: track.duration
+    });
+
+    await act(async () => {
+      audio.currentTime = track.duration;
+      audio.dispatchEvent(new Event("timeupdate"));
+      audio.dispatchEvent(new Event("ended"));
+    });
+
+    await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenLastCalledWith(folderTrack.filePath));
+    expect(within(screen.getByRole("contentinfo")).getByText("Artist Folder Song")).toBeTruthy();
+    expect(within(screen.getByRole("contentinfo")).queryByText("Second Song")).toBeNull();
+  });
+
   it("ignores a saved playback track that is missing from the restored library", async () => {
     localStorage.setItem("local-music-player:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));

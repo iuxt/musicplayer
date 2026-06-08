@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Track } from "../../shared/types";
 import { useAudioPlayer } from "./useAudioPlayer";
@@ -9,7 +9,18 @@ const tracks: Track[] = [
   makeTrack("c", "Gamma")
 ];
 
+let createdAudioElements: HTMLAudioElement[] = [];
+
 beforeEach(() => {
+  createdAudioElements = [];
+  vi.stubGlobal(
+    "Audio",
+    vi.fn(() => {
+      const audio = document.createElement("audio");
+      createdAudioElements.push(audio);
+      return audio;
+    })
+  );
   Object.defineProperty(HTMLMediaElement.prototype, "play", {
     configurable: true,
     value: vi.fn().mockResolvedValue(undefined)
@@ -65,6 +76,26 @@ describe("useAudioPlayer", () => {
     expect(result.current.currentTime).toBe(37);
     expect(result.current.isPlaying).toBe(false);
     expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+  });
+
+  it("auto-advances to the next loaded queue track when playback ends", async () => {
+    const { result, rerender } = renderHook(({ queue }) => useAudioPlayer(queue), {
+      initialProps: { queue: [] as Track[] }
+    });
+
+    rerender({ queue: tracks });
+
+    await act(async () => {
+      await result.current.playTrack(tracks[0]);
+    });
+
+    await act(async () => {
+      createdAudioElements[0].dispatchEvent(new Event("ended"));
+    });
+
+    await waitFor(() => expect(result.current.currentTrack?.title).toBe("Beta"));
+    expect(window.musicApi.getPlayableUrl).toHaveBeenLastCalledWith(tracks[1].filePath);
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2);
   });
 
   it("cycles playback mode through shuffle, repeat all, repeat one, and off", () => {

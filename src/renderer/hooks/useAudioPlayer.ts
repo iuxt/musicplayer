@@ -5,6 +5,9 @@ export type RepeatMode = "off" | "all" | "one";
 
 export function useAudioPlayer(queue: Track[]) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const nextRef = useRef<() => Promise<void>>(async () => undefined);
+  const playbackGenerationRef = useRef(0);
+  const handledEndGenerationRef = useRef<number | null>(null);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(queue[0] ?? null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -26,11 +29,22 @@ export function useAudioPlayer(queue: Track[]) {
     audio.volume = volume;
     audioRef.current = audio;
 
-    const updateTime = () => setCurrentTime(audio.currentTime);
-    const updateDuration = () => setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
     const handleEnded = () => {
-      void next();
+      const playbackGeneration = playbackGenerationRef.current;
+      if (handledEndGenerationRef.current === playbackGeneration) {
+        return;
+      }
+
+      handledEndGenerationRef.current = playbackGeneration;
+      void nextRef.current();
     };
+    const updateTime = () => {
+      setCurrentTime(audio.currentTime);
+      if (hasPlaybackReachedEnd(audio)) {
+        handleEnded();
+      }
+    };
+    const updateDuration = () => setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
     const handleError = () => {
       setPlaybackError("Unable to play this track.");
       setIsPlaying(false);
@@ -48,8 +62,6 @@ export function useAudioPlayer(queue: Track[]) {
       audio.removeEventListener("ended", handleEnded);
       audio.removeEventListener("error", handleError);
     };
-    // The ended handler intentionally reads the latest queue state through React closures.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -67,6 +79,7 @@ export function useAudioPlayer(queue: Track[]) {
 
     setPlaybackError(null);
     const url = await window.musicApi.getPlayableUrl(track.filePath);
+    playbackGenerationRef.current += 1;
     audio.src = url;
     audio.currentTime = 0;
     setCurrentTime(0);
@@ -154,6 +167,10 @@ export function useAudioPlayer(queue: Track[]) {
     await loadTrack(queue[Math.max(nextIndex, 0)], isPlaying);
   }, [currentIndex, currentTrack, isPlaying, loadTrack, queue, repeat, shuffle]);
 
+  useEffect(() => {
+    nextRef.current = next;
+  }, [next]);
+
   const previous = useCallback(async () => {
     if (queue.length === 0) {
       return;
@@ -232,4 +249,8 @@ function randomQueueIndex(length: number, currentIndex: number) {
     index = Math.floor(Math.random() * length);
   }
   return index;
+}
+
+function hasPlaybackReachedEnd(audio: HTMLAudioElement) {
+  return Number.isFinite(audio.duration) && audio.duration > 0 && audio.currentTime >= audio.duration;
 }
