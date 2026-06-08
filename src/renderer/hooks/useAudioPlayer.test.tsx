@@ -53,6 +53,20 @@ describe("useAudioPlayer", () => {
     expect(result.current.currentTrack?.title).toBe("Alpha");
   });
 
+  it("restores a track at a requested time without playing", async () => {
+    const { result } = renderHook(() => useAudioPlayer(tracks));
+
+    await act(async () => {
+      await result.current.restoreTrack(tracks[1], 37);
+    });
+
+    expect(window.musicApi.getPlayableUrl).toHaveBeenCalledWith(tracks[1].filePath);
+    expect(result.current.currentTrack?.title).toBe("Beta");
+    expect(result.current.currentTime).toBe(37);
+    expect(result.current.isPlaying).toBe(false);
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+  });
+
   it("cycles playback mode through shuffle, repeat all, repeat one, and off", () => {
     const { result } = renderHook(() => useAudioPlayer(tracks));
 

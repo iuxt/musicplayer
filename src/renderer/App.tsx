@@ -13,6 +13,15 @@ import type { LibraryCategory } from "./libraryCategories";
 
 const LAST_FOLDER_STORAGE_KEY = "local-music-player:last-folder";
 const LIBRARY_CACHE_STORAGE_KEY = "local-music-player:library-cache";
+const PLAYBACK_STATE_STORAGE_KEY = "local-music-player:playback-state";
+
+type PlaybackState = {
+  trackId: string;
+  currentTime: number;
+  queueTrackIds: string[];
+  isPlayQueueExplicit: boolean;
+  playlistLabel: string;
+};
 
 export function App() {
   const [folderPath, setFolderPath] = useState<string | null>(null);
@@ -31,6 +40,7 @@ export function App() {
   const [lyrics, setLyrics] = useState<string | null>(null);
   const [isLyricsLoading, setIsLyricsLoading] = useState(false);
   const [isFullscreenLyricsOpen, setIsFullscreenLyricsOpen] = useState(false);
+  const [pendingPlaybackRestore, setPendingPlaybackRestore] = useState<PlaybackState | null>(null);
 
   const loadLibraryResult = useCallback((result: ScanResult) => {
     setFolderPath(result.folderPath);
@@ -41,6 +51,22 @@ export function App() {
     setPlaylistLabel("Library");
     setSelectedFolderPath(null);
     localStorage.setItem(LAST_FOLDER_STORAGE_KEY, result.folderPath);
+
+    const playbackState = readPlaybackState(result.tracks);
+    if (!playbackState) {
+      setPendingPlaybackRestore(null);
+      return;
+    }
+
+    const tracksById = new Map(result.tracks.map((track) => [track.id, track]));
+    const restoredQueue = playbackState.queueTrackIds
+      .map((trackId) => tracksById.get(trackId))
+      .filter((track): track is Track => Boolean(track));
+
+    setPlayQueue(restoredQueue.length > 0 ? restoredQueue : result.tracks);
+    setIsPlayQueueExplicit(playbackState.isPlayQueueExplicit && restoredQueue.length > 0);
+    setPlaylistLabel(playbackState.playlistLabel || "Library");
+    setPendingPlaybackRestore(playbackState);
   }, []);
 
   const filteredTracks = useMemo(() => {
@@ -67,6 +93,35 @@ export function App() {
   }, [filteredTracks, isPlayQueueExplicit, playQueue]);
 
   const player = useAudioPlayer(playlistTracks);
+
+  useEffect(() => {
+    if (!pendingPlaybackRestore) {
+      return;
+    }
+
+    const track = playlistTracks.find((queuedTrack) => queuedTrack.id === pendingPlaybackRestore.trackId) ?? null;
+    if (!track) {
+      setPendingPlaybackRestore(null);
+      return;
+    }
+
+    setPendingPlaybackRestore(null);
+    void player.restoreTrack(track, clampPlaybackTime(pendingPlaybackRestore.currentTime, track.duration));
+  }, [pendingPlaybackRestore, player.restoreTrack, playlistTracks]);
+
+  useEffect(() => {
+    if (!player.currentTrack) {
+      return;
+    }
+
+    savePlaybackState({
+      trackId: player.currentTrack.id,
+      currentTime: clampPlaybackTime(player.currentTime, player.currentTrack.duration),
+      queueTrackIds: playlistTracks.map((track) => track.id),
+      isPlayQueueExplicit,
+      playlistLabel
+    });
+  }, [isPlayQueueExplicit, player.currentTime, player.currentTrack, playlistLabel, playlistTracks]);
 
   useEffect(() => {
     if (!isPlayQueueExplicit) {
@@ -348,6 +403,55 @@ function readLibraryCache(folderPath: string): ScanResult | null {
   } catch {
     return null;
   }
+}
+
+function savePlaybackState(state: PlaybackState) {
+  localStorage.setItem(PLAYBACK_STATE_STORAGE_KEY, JSON.stringify(state));
+}
+
+function readPlaybackState(tracks: Track[]): PlaybackState | null {
+  const cachedValue = localStorage.getItem(PLAYBACK_STATE_STORAGE_KEY);
+  if (!cachedValue) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(cachedValue) as unknown;
+    return isPlaybackStateForTracks(parsed, tracks) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function isPlaybackStateForTracks(value: unknown, tracks: Track[]): value is PlaybackState {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  const trackIds = new Set(tracks.map((track) => track.id));
+  return (
+    typeof value.trackId === "string" &&
+    trackIds.has(value.trackId) &&
+    typeof value.currentTime === "number" &&
+    Number.isFinite(value.currentTime) &&
+    value.currentTime >= 0 &&
+    Array.isArray(value.queueTrackIds) &&
+    value.queueTrackIds.every((trackId) => typeof trackId === "string") &&
+    typeof value.isPlayQueueExplicit === "boolean" &&
+    typeof value.playlistLabel === "string"
+  );
+}
+
+function clampPlaybackTime(time: number, duration: number) {
+  if (!Number.isFinite(time) || time < 0) {
+    return 0;
+  }
+
+  if (Number.isFinite(duration) && duration > 0) {
+    return Math.min(time, duration);
+  }
+
+  return time;
 }
 
 function isScanResultForFolder(value: unknown, folderPath: string): value is ScanResult {

@@ -92,6 +92,25 @@ export function useAudioPlayer(queue: Track[]) {
     [loadTrack]
   );
 
+  const restoreTrack = useCallback(async (track: Track, time: number) => {
+    const audio = audioRef.current;
+    const restoredTime = Number.isFinite(time) ? Math.max(0, time) : 0;
+
+    setPlaybackError(null);
+    setCurrentTrack(track);
+    setCurrentTime(restoredTime);
+    setIsPlaying(false);
+
+    if (!audio) {
+      return;
+    }
+
+    const url = await window.musicApi.getPlayableUrl(track.filePath);
+    audio.src = url;
+    audio.currentTime = restoredTime;
+    audio.pause();
+  }, []);
+
   const playPause = useCallback(async () => {
     const audio = audioRef.current;
     const track = currentTrack ?? queue[0] ?? null;
@@ -191,6 +210,7 @@ export function useAudioPlayer(queue: Track[]) {
     playbackError,
     selectTrack,
     playTrack,
+    restoreTrack,
     playPause,
     next,
     previous,

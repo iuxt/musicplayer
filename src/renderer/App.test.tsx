@@ -14,6 +14,7 @@ const scanResult: ScanResult = {
   warnings: []
 };
 const libraryCacheKey = "local-music-player:library-cache";
+const playbackStateKey = "local-music-player:playback-state";
 
 let menuHandler: ((command: "choose-folder" | "rescan-library") => void) | null = null;
 
@@ -61,6 +62,53 @@ describe("App", () => {
 
     await waitFor(() => expect(window.musicApi.rescanLibrary).toHaveBeenCalledWith(rememberedFolder));
     await waitFor(() => expect(localStorage.getItem(libraryCacheKey)).toBe(JSON.stringify(scanResult)));
+  });
+
+  it("restores the last played track and position on startup without autoplaying", async () => {
+    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+    localStorage.setItem(
+      playbackStateKey,
+      JSON.stringify({
+        trackId: secondTrack.id,
+        currentTime: 42,
+        queueTrackIds: [secondTrack.id, thirdTrack.id],
+        isPlayQueueExplicit: true,
+        playlistLabel: "Second Artist/Second Album"
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenCalledWith(secondTrack.filePath));
+    await waitFor(() => expect(screen.getByText("0:42")).toBeTruthy());
+    expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
+
+    const playlist = screen.getByRole("region", { name: "Playlist" });
+    expect(within(playlist).getByText("Second Song")).toBeTruthy();
+    expect(within(playlist).getByText("Third Song")).toBeTruthy();
+    expect(within(playlist).queryByText("Wave Song")).toBeNull();
+  });
+
+  it("ignores a saved playback track that is missing from the restored library", async () => {
+    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+    localStorage.setItem(
+      playbackStateKey,
+      JSON.stringify({
+        trackId: "missing-track",
+        currentTime: 42,
+        queueTrackIds: [secondTrack.id],
+        isPlayQueueExplicit: true,
+        playlistLabel: "Missing"
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    expect(window.musicApi.getPlayableUrl).not.toHaveBeenCalled();
+    expect(screen.queryByText("0:42")).toBeNull();
   });
 
   it("shows the song list without the large now-playing artwork on the main screen", async () => {
