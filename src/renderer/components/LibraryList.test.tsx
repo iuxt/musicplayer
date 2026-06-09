@@ -19,6 +19,7 @@ describe("LibraryList", () => {
         onSelectTrack={onSelectTrack}
         onOpenFolder={() => undefined}
         onBackToFolders={() => undefined}
+        onTrackContextMenu={() => undefined}
       />
     );
 
@@ -29,6 +30,30 @@ describe("LibraryList", () => {
     fireEvent.click(screen.getByRole("button", { name: /Track 000/ }));
 
     expect(onSelectTrack).toHaveBeenCalledWith(tracks[0]);
+  });
+
+  it("reports context menu requests for concrete track rows", () => {
+    const tracks = [makeTrack(1), makeTrack(2)];
+    const onTrackContextMenu = vi.fn();
+
+    render(
+      <LibraryList
+        category="songs"
+        tracks={tracks}
+        currentTrack={null}
+        search=""
+        selectedFolderPath={null}
+        onSearchChange={() => undefined}
+        onSelectTrack={() => undefined}
+        onOpenFolder={() => undefined}
+        onBackToFolders={() => undefined}
+        onTrackContextMenu={onTrackContextMenu}
+      />
+    );
+
+    fireEvent.contextMenu(screen.getByRole("button", { name: /Track 001/ }), { clientX: 24, clientY: 48 });
+
+    expect(onTrackContextMenu).toHaveBeenCalledWith(tracks[0], { x: 24, y: 48 });
   });
 });
 

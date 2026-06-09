@@ -15,6 +15,7 @@ interface LibraryListProps {
   onSelectTrack: (track: Track, queueTracks?: Track[]) => void;
   onOpenFolder: (folderPath: string) => void;
   onBackToFolders: () => void;
+  onTrackContextMenu: (track: Track, position: { x: number; y: number }) => void;
 }
 
 const headings: Record<LibraryCategory, string> = {
@@ -33,7 +34,8 @@ export const LibraryList = memo(function LibraryList({
   onSearchChange,
   onSelectTrack,
   onOpenFolder,
-  onBackToFolders
+  onBackToFolders,
+  onTrackContextMenu
 }: LibraryListProps) {
   const isFolderDetail = category === "folders" && Boolean(selectedFolderPath);
   const groups = useMemo(
@@ -77,7 +79,13 @@ export const LibraryList = memo(function LibraryList({
           items={tracks}
           getKey={(track) => track.id}
           renderItem={(track, index) => (
-            <TrackRow currentTrack={currentTrack} index={index} onSelectTrack={onSelectTrack} track={track} />
+            <TrackRow
+              currentTrack={currentTrack}
+              index={index}
+              onSelectTrack={onSelectTrack}
+              onTrackContextMenu={onTrackContextMenu}
+              track={track}
+            />
           )}
         />
       ) : category === "folders" ? (
@@ -98,7 +106,13 @@ export const LibraryList = memo(function LibraryList({
                 <span className="track-duration">Open</span>
               </button>
             ) : (
-              <TrackRow currentTrack={currentTrack} index={index} onSelectTrack={onSelectTrack} track={row.track} />
+              <TrackRow
+                currentTrack={currentTrack}
+                index={index}
+                onSelectTrack={onSelectTrack}
+                onTrackContextMenu={onTrackContextMenu}
+                track={row.track}
+              />
             )
           }
         />
@@ -135,17 +149,23 @@ function TrackRow({
   currentTrack,
   index,
   track,
-  onSelectTrack
+  onSelectTrack,
+  onTrackContextMenu
 }: {
   currentTrack: Track | null;
   index: number;
   track: Track;
   onSelectTrack: (track: Track, queueTracks?: Track[]) => void;
+  onTrackContextMenu: (track: Track, position: { x: number; y: number }) => void;
 }) {
   return (
     <button
       className={`track-row ${currentTrack?.id === track.id ? "active" : ""}`}
       onClick={() => onSelectTrack(track)}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        onTrackContextMenu(track, { x: event.clientX, y: event.clientY });
+      }}
       type="button"
     >
       <span className="track-index">{String(index + 1).padStart(2, "0")}</span>
