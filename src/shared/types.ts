@@ -32,3 +32,33 @@ export interface ScanResult {
   tracks: Track[];
   warnings: ScanWarning[];
 }
+
+export interface TrackMetadataUpdate {
+  title: string;
+  artist: string;
+  album: string;
+  trackNumber: number | null;
+}
+
+export interface TrackMetadataFields extends TrackMetadataUpdate {
+  duration: number;
+}
+
+export type MediaActionResult = { ok: true } | { ok: false; error: string };
+
+export interface TrashFileEntry {
+  filePath: string;
+  kind: "audio" | "lyrics" | "artwork";
+}
+
+export interface TrashTrackFilesResult {
+  ok: boolean;
+  audioRemoved: boolean;
+  trashed: TrashFileEntry[];
+  failed: Array<TrashFileEntry & { error: string }>;
+  error: string | null;
+}
+
+export type UpdateTrackMetadataResult =
+  | { ok: true; metadata: TrackMetadataFields }
+  | { ok: false; error: string };
