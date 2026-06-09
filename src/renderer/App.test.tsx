@@ -44,6 +44,10 @@ beforeEach(() => {
     getPlayableUrl: vi.fn(async (filePath: string) => `file://${filePath}`),
     getArtworkUrl: vi.fn(async () => null),
     getLyrics: vi.fn(async () => null),
+    showTrackInFolder: vi.fn(async () => ({ ok: true as const })),
+    updateTrackMetadata: vi.fn(async (_filePath, metadata) => ({ ok: true as const, metadata: { ...metadata, duration: 180 } })),
+    trashTrackLyrics: vi.fn(async () => ({ ok: true as const })),
+    trashTrackFiles: vi.fn(async () => ({ ok: true, audioRemoved: true, trashed: [], failed: [], error: null })),
     onScanProgress: vi.fn(() => () => undefined),
     onMenuCommand: vi.fn((callback) => {
       menuHandler = callback;
@@ -375,6 +379,85 @@ describe("App", () => {
     expect(within(playlist).queryByText("Wave Song")).toBeNull();
     expect(within(playlist).queryByText("Second Song")).toBeNull();
     expect(within(screen.getByRole("region", { name: "Library browser" })).getByText("Wave Song")).toBeTruthy();
+  });
+
+  it("opens the track context menu and disables lyric deletion when no lyrics exist", async () => {
+    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    fireEvent.contextMenu(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }), {
+      clientX: 40,
+      clientY: 80
+    });
+
+    expect(screen.getByRole("menu")).toBeTruthy();
+    expect((screen.getByRole("menuitem", { name: "删除当前歌词" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it("saves edited metadata and updates visible track data", async () => {
+    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    fireEvent.contextMenu(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "编辑音乐信息" }));
+    fireEvent.change(screen.getByLabelText("标题"), { target: { value: "Edited Song" } });
+    fireEvent.change(screen.getByLabelText("歌手"), { target: { value: "Edited Artist" } });
+    fireEvent.change(screen.getByLabelText("专辑"), { target: { value: "Edited Album" } });
+    fireEvent.change(screen.getByLabelText("曲号"), { target: { value: "5" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    await waitFor(() =>
+      expect(window.musicApi.updateTrackMetadata).toHaveBeenCalledWith(track.filePath, {
+        title: "Edited Song",
+        artist: "Edited Artist",
+        album: "Edited Album",
+        trackNumber: 5
+      })
+    );
+    expect(screen.getAllByText("Edited Song").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Edited Artist").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Edited Album").length).toBeGreaterThan(0);
+  });
+
+  it("trashes lyrics and clears lyric state for the track", async () => {
+    const trackWithLyrics = { ...track, lyricsPath: "/music/Wave Song.lrc", hasLyrics: true };
+    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify({ ...scanResult, tracks: [trackWithLyrics, secondTrack] }));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    fireEvent.contextMenu(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "删除当前歌词" }));
+
+    await waitFor(() => expect(window.musicApi.trashTrackLyrics).toHaveBeenCalledWith(trackWithLyrics));
+    const cached = JSON.parse(localStorage.getItem(libraryCacheKey) ?? "{}") as ScanResult;
+    expect(cached.tracks[0].lyricsPath).toBeNull();
+    expect(cached.tracks[0].hasLyrics).toBe(false);
+  });
+
+  it("trashes a track and removes it from library and playlist", async () => {
+    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    fireEvent.contextMenu(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "删除当前音乐文件" }));
+
+    await waitFor(() => expect(window.musicApi.trashTrackFiles).toHaveBeenCalledWith(track));
+    expect(within(screen.getByRole("region", { name: "Library browser" })).queryByText("Wave Song")).toBeNull();
+    expect(within(screen.getByRole("region", { name: "Playlist" })).queryByText("Wave Song")).toBeNull();
+
+    confirmSpy.mockRestore();
   });
 
   it("queues only the selected artist when playing an artist group", async () => {

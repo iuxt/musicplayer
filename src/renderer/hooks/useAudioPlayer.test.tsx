@@ -36,6 +36,10 @@ beforeEach(() => {
     getPlayableUrl: vi.fn(async (filePath: string) => `file://${filePath}`),
     getArtworkUrl: vi.fn(),
     getLyrics: vi.fn(),
+    showTrackInFolder: vi.fn(),
+    updateTrackMetadata: vi.fn(),
+    trashTrackLyrics: vi.fn(),
+    trashTrackFiles: vi.fn(),
     onScanProgress: vi.fn(),
     onMenuCommand: vi.fn()
   };
@@ -128,6 +132,37 @@ describe("useAudioPlayer", () => {
 
     expect(result.current.shuffle).toBe(false);
     expect(result.current.repeat).toBe("off");
+  });
+
+  it("stops playback and clears the current track", async () => {
+    const { result } = renderHook(() => useAudioPlayer(tracks));
+
+    await act(async () => {
+      await result.current.playTrack(tracks[0]);
+    });
+    act(() => {
+      result.current.stop();
+    });
+
+    expect(result.current.currentTrack).toBeNull();
+    expect(result.current.currentTime).toBe(0);
+    expect(result.current.duration).toBe(0);
+    expect(result.current.isPlaying).toBe(false);
+    expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled();
+  });
+
+  it("replaces the current track metadata without reloading audio", async () => {
+    const { result } = renderHook(() => useAudioPlayer(tracks));
+
+    await act(async () => {
+      await result.current.selectTrack(tracks[0]);
+    });
+    act(() => {
+      result.current.replaceCurrentTrack({ ...tracks[0], title: "Edited Alpha" });
+    });
+
+    expect(result.current.currentTrack?.title).toBe("Edited Alpha");
+    expect(window.musicApi.getPlayableUrl).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -8,6 +8,7 @@ export function useAudioPlayer(queue: Track[]) {
   const nextRef = useRef<() => Promise<void>>(async () => undefined);
   const playbackGenerationRef = useRef(0);
   const handledEndGenerationRef = useRef<number | null>(null);
+  const shouldAutoSelectRef = useRef(true);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(queue[0] ?? null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -65,7 +66,7 @@ export function useAudioPlayer(queue: Track[]) {
   }, []);
 
   useEffect(() => {
-    if (!currentTrack && queue.length > 0) {
+    if (!currentTrack && queue.length > 0 && shouldAutoSelectRef.current) {
       setCurrentTrack(queue[0]);
     }
   }, [currentTrack, queue]);
@@ -78,6 +79,7 @@ export function useAudioPlayer(queue: Track[]) {
     }
 
     setPlaybackError(null);
+    shouldAutoSelectRef.current = true;
     const url = await window.musicApi.getPlayableUrl(track.filePath);
     playbackGenerationRef.current += 1;
     audio.src = url;
@@ -110,6 +112,7 @@ export function useAudioPlayer(queue: Track[]) {
     const restoredTime = Number.isFinite(time) ? Math.max(0, time) : 0;
 
     setPlaybackError(null);
+    shouldAutoSelectRef.current = true;
     setCurrentTrack(track);
     setCurrentTime(restoredTime);
     setIsPlaying(false);
@@ -216,6 +219,23 @@ export function useAudioPlayer(queue: Track[]) {
     setRepeat((mode) => (mode === "all" ? "one" : "off"));
   }, [repeat, shuffle]);
 
+  const stop = useCallback(() => {
+    const audio = audioRef.current;
+    shouldAutoSelectRef.current = false;
+    if (audio) {
+      audio.pause();
+      audio.removeAttribute("src");
+    }
+    setCurrentTrack(null);
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setDuration(0);
+  }, []);
+
+  const replaceCurrentTrack = useCallback((track: Track) => {
+    setCurrentTrack((current) => (current?.id === track.id ? track : current));
+  }, []);
+
   return {
     currentTrack,
     isPlaying,
@@ -235,7 +255,9 @@ export function useAudioPlayer(queue: Track[]) {
     setVolume,
     toggleShuffle,
     toggleRepeat,
-    cyclePlaybackMode
+    cyclePlaybackMode,
+    stop,
+    replaceCurrentTrack
   };
 }
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ScanProgress, ScanResult, ScanWarning, Track } from "../shared/types";
+import type { ScanProgress, ScanResult, ScanWarning, Track, TrackMetadataUpdate } from "../shared/types";
+import { EditTrackMetadataDialog } from "./components/EditTrackMetadataDialog";
 import { EmptyState } from "./components/EmptyState";
 import { FullscreenLyrics } from "./components/FullscreenLyrics";
 import { LibraryList } from "./components/LibraryList";
@@ -7,6 +8,7 @@ import { PlayerBar } from "./components/PlayerBar";
 import { Playlist } from "./components/Playlist";
 import { ScanningState } from "./components/ScanningState";
 import { Sidebar } from "./components/Sidebar";
+import { TrackContextMenu } from "./components/TrackContextMenu";
 import { getParentFolderPath, getTracksAtFolderLevel } from "./folderBrowser";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
 import type { LibraryCategory } from "./libraryCategories";
@@ -42,6 +44,10 @@ export function App() {
   const [isLyricsLoading, setIsLyricsLoading] = useState(false);
   const [isFullscreenLyricsOpen, setIsFullscreenLyricsOpen] = useState(false);
   const [pendingPlaybackRestore, setPendingPlaybackRestore] = useState<PlaybackState | null>(null);
+  const [trackMenu, setTrackMenu] = useState<{ track: Track; position: { x: number; y: number } } | null>(null);
+  const [editingTrack, setEditingTrack] = useState<Track | null>(null);
+  const [metadataError, setMetadataError] = useState<string | null>(null);
+  const [pendingMediaAction, setPendingMediaAction] = useState(false);
   const lastPlaybackSaveRef = useRef<{
     trackId: string | null;
     queueKey: string;
@@ -361,6 +367,179 @@ export function App() {
     setIsPlayQueueExplicit(true);
   }, [playlistTracks]);
 
+  const commitTracks = useCallback(
+    (updater: (currentTracks: Track[]) => Track[]) => {
+      setTracks((currentTracks) => {
+        const nextTracks = updater(currentTracks);
+        if (folderPath) {
+          saveLibraryCache({ folderPath, tracks: nextTracks, warnings });
+        }
+        return nextTracks;
+      });
+    },
+    [folderPath, warnings]
+  );
+
+  const replaceTrack = useCallback(
+    (updatedTrack: Track) => {
+      commitTracks((currentTracks) =>
+        sortTracksByTitle(currentTracks.map((existingTrack) => (existingTrack.id === updatedTrack.id ? updatedTrack : existingTrack)))
+      );
+      setPlayQueue((queue) => queue.map((queuedTrack) => (queuedTrack.id === updatedTrack.id ? updatedTrack : queuedTrack)));
+      player.replaceCurrentTrack(updatedTrack);
+    },
+    [commitTracks, player]
+  );
+
+  const updateTrackLyricsState = useCallback(
+    (trackId: string) => {
+      commitTracks((currentTracks) =>
+        currentTracks.map((existingTrack) =>
+          existingTrack.id === trackId ? { ...existingTrack, lyricsPath: null, hasLyrics: false } : existingTrack
+        )
+      );
+      setPlayQueue((queue) =>
+        queue.map((queuedTrack) => (queuedTrack.id === trackId ? { ...queuedTrack, lyricsPath: null, hasLyrics: false } : queuedTrack))
+      );
+      if (player.currentTrack?.id === trackId) {
+        setLyrics(null);
+        setIsLyricsLoading(false);
+        player.replaceCurrentTrack({ ...player.currentTrack, lyricsPath: null, hasLyrics: false });
+      }
+    },
+    [commitTracks, player]
+  );
+
+  const removeTrackFromLibrary = useCallback(
+    async (trackToRemove: Track) => {
+      const currentQueueIndex = playlistTracks.findIndex((queuedTrack) => queuedTrack.id === trackToRemove.id);
+      const nextQueue = playlistTracks.filter((queuedTrack) => queuedTrack.id !== trackToRemove.id);
+      const nextTrack = currentQueueIndex >= 0 ? nextQueue[currentQueueIndex] ?? null : null;
+
+      commitTracks((currentTracks) => currentTracks.filter((existingTrack) => existingTrack.id !== trackToRemove.id));
+      setPlayQueue(nextQueue);
+      setIsPlayQueueExplicit(true);
+      removePlaybackStateForTrack(trackToRemove.id);
+
+      if (player.currentTrack?.id !== trackToRemove.id) {
+        return;
+      }
+
+      setLyrics(null);
+      setArtworkUrl(null);
+      setIsLyricsLoading(false);
+      if (!nextTrack) {
+        player.stop();
+        return;
+      }
+
+      if (player.isPlaying) {
+        await player.playTrack(nextTrack);
+      } else {
+        await player.selectTrack(nextTrack);
+      }
+    },
+    [commitTracks, player, playlistTracks]
+  );
+
+  const showTrackInFolder = useCallback(async (track: Track) => {
+    setPendingMediaAction(true);
+    setAppError(null);
+    try {
+      const result = await window.musicApi.showTrackInFolder(track.filePath);
+      if (!result.ok) {
+        setAppError(result.error);
+      }
+    } catch (error) {
+      setAppError(error instanceof Error ? error.message : "Unable to open the file location.");
+    } finally {
+      setPendingMediaAction(false);
+      setTrackMenu(null);
+    }
+  }, []);
+
+  const saveTrackMetadata = useCallback(
+    async (metadata: TrackMetadataUpdate) => {
+      if (!editingTrack) {
+        return;
+      }
+
+      setPendingMediaAction(true);
+      setMetadataError(null);
+      try {
+        const result = await window.musicApi.updateTrackMetadata(editingTrack.filePath, metadata);
+        if (!result.ok) {
+          setMetadataError(result.error);
+          return;
+        }
+
+        replaceTrack({
+          ...editingTrack,
+          title: result.metadata.title,
+          artist: result.metadata.artist,
+          album: result.metadata.album,
+          trackNumber: result.metadata.trackNumber,
+          duration: result.metadata.duration || editingTrack.duration
+        });
+        setEditingTrack(null);
+      } catch (error) {
+        setMetadataError(error instanceof Error ? error.message : "Unable to update music information.");
+      } finally {
+        setPendingMediaAction(false);
+      }
+    },
+    [editingTrack, replaceTrack]
+  );
+
+  const deleteTrackLyrics = useCallback(
+    async (track: Track) => {
+      setPendingMediaAction(true);
+      setAppError(null);
+      try {
+        const result = await window.musicApi.trashTrackLyrics(track);
+        if (!result.ok) {
+          setAppError(result.error);
+          return;
+        }
+        updateTrackLyricsState(track.id);
+      } catch (error) {
+        setAppError(error instanceof Error ? error.message : "Unable to move lyrics to trash.");
+      } finally {
+        setPendingMediaAction(false);
+        setTrackMenu(null);
+      }
+    },
+    [updateTrackLyricsState]
+  );
+
+  const deleteTrackFiles = useCallback(
+    async (track: Track) => {
+      const confirmed = window.confirm("将把当前音乐文件、同名歌词和同名封面移到废纸篓。是否继续？");
+      if (!confirmed) {
+        setTrackMenu(null);
+        return;
+      }
+
+      setPendingMediaAction(true);
+      setAppError(null);
+      try {
+        const result = await window.musicApi.trashTrackFiles(track);
+        if (result.audioRemoved) {
+          await removeTrackFromLibrary(track);
+        }
+        if (!result.ok && result.error) {
+          setAppError(result.error);
+        }
+      } catch (error) {
+        setAppError(error instanceof Error ? error.message : "Unable to move the music file to trash.");
+      } finally {
+        setPendingMediaAction(false);
+        setTrackMenu(null);
+      }
+    },
+    [removeTrackFromLibrary]
+  );
+
   return (
     <div className="app-frame">
       <div className="window-drag-region" aria-hidden="true" />
@@ -390,6 +569,7 @@ export function App() {
               onSelectTrack={playTrack}
               onOpenFolder={openFolder}
               onBackToFolders={backFolder}
+              onTrackContextMenu={(track, position) => setTrackMenu({ track, position })}
             />
             <Playlist
               tracks={playlistTracks}
@@ -411,6 +591,41 @@ export function App() {
           isLyricsLoading={isLyricsLoading}
           currentTime={player.currentTime}
           onClose={() => setIsFullscreenLyricsOpen(false)}
+        />
+      ) : null}
+
+      {trackMenu ? (
+        <TrackContextMenu
+          track={trackMenu.track}
+          position={trackMenu.position}
+          busy={pendingMediaAction}
+          onClose={() => setTrackMenu(null)}
+          onShowInFolder={() => {
+            void showTrackInFolder(trackMenu.track);
+          }}
+          onEdit={() => {
+            setMetadataError(null);
+            setEditingTrack(trackMenu.track);
+            setTrackMenu(null);
+          }}
+          onDeleteLyrics={() => {
+            void deleteTrackLyrics(trackMenu.track);
+          }}
+          onDeleteTrack={() => {
+            void deleteTrackFiles(trackMenu.track);
+          }}
+        />
+      ) : null}
+
+      {editingTrack ? (
+        <EditTrackMetadataDialog
+          track={editingTrack}
+          busy={pendingMediaAction}
+          error={metadataError}
+          onCancel={() => setEditingTrack(null)}
+          onSave={(metadata) => {
+            void saveTrackMetadata(metadata);
+          }}
         />
       ) : null}
 
@@ -475,6 +690,35 @@ function readPlaybackState(tracks: Track[]): PlaybackState | null {
   } catch {
     return null;
   }
+}
+
+function removePlaybackStateForTrack(trackId: string) {
+  const cachedValue = localStorage.getItem(PLAYBACK_STATE_STORAGE_KEY);
+  if (!cachedValue) {
+    return;
+  }
+
+  try {
+    const parsed = JSON.parse(cachedValue) as PlaybackState;
+    if (parsed.trackId === trackId) {
+      localStorage.removeItem(PLAYBACK_STATE_STORAGE_KEY);
+      return;
+    }
+
+    localStorage.setItem(
+      PLAYBACK_STATE_STORAGE_KEY,
+      JSON.stringify({
+        ...parsed,
+        queueTrackIds: parsed.queueTrackIds.filter((queuedTrackId) => queuedTrackId !== trackId)
+      })
+    );
+  } catch {
+    localStorage.removeItem(PLAYBACK_STATE_STORAGE_KEY);
+  }
+}
+
+function sortTracksByTitle(tracks: Track[]) {
+  return [...tracks].sort((first, second) => first.title.localeCompare(second.title));
 }
 
 function isPlaybackStateForTracks(value: unknown, tracks: Track[]): value is PlaybackState {
