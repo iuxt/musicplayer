@@ -1,8 +1,11 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, type MenuItemConstructorOptions, type OpenDialogOptions } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, shell, type MenuItemConstructorOptions, type OpenDialogOptions } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readLyricsFile, toMediaFileUrl, toOptionalFileUrl } from "../src/main/fileUrls.js";
+import { writeTrackMetadata } from "../src/main/metadataWriter.js";
 import { scanMusicFolder } from "../src/main/scanner.js";
+import { trashTrackFiles, trashTrackLyrics } from "../src/main/trackFileActions.js";
+import type { Track, TrackMetadataUpdate } from "../src/shared/types.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -84,6 +87,23 @@ function registerIpc() {
 
   ipcMain.handle("media:get-lyrics", (_event, filePath: string | null) => {
     return readLyricsFile(filePath);
+  });
+
+  ipcMain.handle("media:show-track-in-folder", (_event, filePath: string) => {
+    shell.showItemInFolder(filePath);
+    return { ok: true };
+  });
+
+  ipcMain.handle("media:update-track-metadata", (_event, filePath: string, metadata: TrackMetadataUpdate) => {
+    return writeTrackMetadata(filePath, metadata);
+  });
+
+  ipcMain.handle("media:trash-track-lyrics", (_event, track: Track) => {
+    return trashTrackLyrics(track, (filePath) => shell.trashItem(filePath));
+  });
+
+  ipcMain.handle("media:trash-track-files", (_event, track: Track) => {
+    return trashTrackFiles(track, (filePath) => shell.trashItem(filePath));
   });
 }
 

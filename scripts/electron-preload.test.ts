@@ -10,4 +10,20 @@ describe("Electron preload packaging", () => {
 
     expect(mainSource).toContain("preload.cjs");
   });
+
+  it("exposes track context menu APIs", async () => {
+    const preloadSource = await readFile(path.join(process.cwd(), "electron/preload.cts"), "utf8");
+    const mainSource = await readFile(path.join(process.cwd(), "electron/main.ts"), "utf8");
+
+    expect(preloadSource).toContain("showTrackInFolder");
+    expect(preloadSource).toContain("updateTrackMetadata");
+    expect(preloadSource).toContain("trashTrackLyrics");
+    expect(preloadSource).toContain("trashTrackFiles");
+    expect(mainSource).toContain("media:show-track-in-folder");
+    expect(mainSource).toContain("media:update-track-metadata");
+    expect(mainSource).toContain("media:trash-track-lyrics");
+    expect(mainSource).toContain("media:trash-track-files");
+    expect(mainSource).toContain("showItemInFolder");
+    expect(mainSource).toContain("trashItem");
+  });
 });
