@@ -590,6 +590,7 @@ export function App() {
           lyrics={lyrics}
           isLyricsLoading={isLyricsLoading}
           currentTime={player.currentTime}
+          fullscreenLyricsFontSize={36}
           onClose={() => setIsFullscreenLyricsOpen(false)}
         />
       ) : null}
