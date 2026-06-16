@@ -8,12 +8,13 @@ describe("build-macos-app helpers", () => {
     expect(normalizeDarwinArch("x64")).toBe("x64");
   });
 
-  it("creates deterministic release and Applications paths", () => {
-    const paths = getBuildPaths("/repo", "arm64");
+  it("creates deterministic staging and Applications paths outside the repo", () => {
+    const paths = getBuildPaths("/repo", "arm64", "/tmp/local-music-player-build");
 
     expect(paths.appName).toBe("Local Music Player");
-    expect(paths.releaseDir).toBe(path.join("/repo", "release"));
-    expect(paths.packagedAppPath).toBe(path.join("/repo", "release", "Local Music Player-darwin-arm64", "Local Music Player.app"));
+    expect(paths.projectReleaseDir).toBe(path.join("/repo", "release"));
+    expect(paths.stagingDir).toBe("/tmp/local-music-player-build");
+    expect(paths.packagedAppPath).toBe(path.join("/tmp/local-music-player-build", "Local Music Player-darwin-arm64", "Local Music Player.app"));
     expect(paths.applicationsPath).toBe(path.join("/Applications", "Local Music Player.app"));
   });
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { packager } from "@electron/packager";
-import { rm } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -17,14 +17,15 @@ export function normalizeDarwinArch(arch = process.arch) {
   throw new Error(`Unsupported macOS architecture: ${arch}`);
 }
 
-export function getBuildPaths(projectRoot, arch = normalizeDarwinArch()) {
+export function getBuildPaths(projectRoot, arch = normalizeDarwinArch(), stagingDir = path.join(os.tmpdir(), "local-music-player-build")) {
   const appName = "Local Music Player";
-  const releaseDir = path.join(projectRoot, "release");
+  const projectReleaseDir = path.join(projectRoot, "release");
 
   return {
     appName,
-    releaseDir,
-    packagedAppPath: path.join(releaseDir, `${appName}-darwin-${arch}`, `${appName}.app`),
+    projectReleaseDir,
+    stagingDir,
+    packagedAppPath: path.join(stagingDir, `${appName}-darwin-${arch}`, `${appName}.app`),
     applicationsPath: path.join("/Applications", `${appName}.app`)
   };
 }
@@ -43,40 +44,44 @@ async function main() {
 
   const projectRoot = path.resolve(__dirname, "..");
   const arch = normalizeDarwinArch(os.arch());
-  const paths = getBuildPaths(projectRoot, arch);
+  const stagingDir = await mkdtemp(path.join(os.tmpdir(), "local-music-player-"));
+  const paths = getBuildPaths(projectRoot, arch, stagingDir);
 
-  await run("npm", ["run", "build"], projectRoot);
+  try {
+    await run("npm", ["run", "build"], projectRoot);
+    await rm(paths.projectReleaseDir, { recursive: true, force: true });
 
-  await rm(paths.releaseDir, { recursive: true, force: true });
-  await packager({
-    dir: projectRoot,
-    name: paths.appName,
-    platform: "darwin",
-    arch,
-    out: paths.releaseDir,
-    overwrite: true,
-    asar: true,
-    prune: true,
-    appBundleId: "local.musicplayer.app",
-    appCategoryType: "public.app-category.music",
-    ignore: [
-      /^\/\.git($|\/)/,
-      /^\/\.worktrees($|\/)/,
-      /^\/\.superpowers($|\/)/,
-      /^\/docs($|\/)/,
-      /^\/src($|\/)/,
-      /^\/scripts\/.*\.test\.ts$/,
-      /^\/dist-electron\/.*\.test\.js$/,
-      /^\/release($|\/)/
-    ]
-  });
+    await packager({
+      dir: projectRoot,
+      name: paths.appName,
+      platform: "darwin",
+      arch,
+      out: paths.stagingDir,
+      overwrite: true,
+      asar: true,
+      prune: true,
+      appBundleId: "local.musicplayer.app",
+      appCategoryType: "public.app-category.music",
+      ignore: [
+        /^\/\.git($|\/)/,
+        /^\/\.worktrees($|\/)/,
+        /^\/\.superpowers($|\/)/,
+        /^\/docs($|\/)/,
+        /^\/src($|\/)/,
+        /^\/scripts\/.*\.test\.ts$/,
+        /^\/dist-electron\/.*\.test\.js$/,
+        /^\/release($|\/)/
+      ]
+    });
 
-  await rm(paths.applicationsPath, { recursive: true, force: true });
-  const install = getInstallCommand(paths.packagedAppPath, paths.applicationsPath);
-  await run(install.command, install.args, projectRoot);
+    await rm(paths.applicationsPath, { recursive: true, force: true });
+    const install = getInstallCommand(paths.packagedAppPath, paths.applicationsPath);
+    await run(install.command, install.args, projectRoot);
 
-  console.log(`Built ${paths.packagedAppPath}`);
-  console.log(`Installed ${paths.applicationsPath}`);
+    console.log(`Installed ${paths.applicationsPath}`);
+  } finally {
+    await rm(paths.stagingDir, { recursive: true, force: true });
+  }
 }
 
 function run(command, args, cwd) {
