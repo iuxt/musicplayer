@@ -13,6 +13,14 @@ describe("SettingsPage", () => {
     expect((screen.getByRole("button", { name: "Rescan Library" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("disables rescan while scanning an existing folder", () => {
+    const props = makeProps({ folderPath: "/Users/test/Music", isScanning: true });
+
+    render(<SettingsPage {...props} />);
+
+    expect((screen.getByRole("button", { name: "Rescan Library" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+
   it("calls library action callbacks", () => {
     const props = makeProps({ folderPath: "/Users/test/Music" });
 
@@ -36,8 +44,8 @@ describe("SettingsPage", () => {
       />
     );
 
-    expect(screen.getByText("Library cache cleared.")).toBeTruthy();
-    expect(screen.getByText("Unable to clear the library cache.")).toBeTruthy();
+    expect(screen.getByRole("status").textContent).toBe("Library cache cleared.");
+    expect(screen.getByRole("alert").textContent).toBe("Unable to clear the library cache.");
   });
 
   it("changes fullscreen lyrics font size", () => {

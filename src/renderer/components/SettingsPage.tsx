@@ -59,8 +59,8 @@ export function SettingsPage({
             Clear Library Cache
           </button>
         </div>
-        {cacheStatus ? <p className="settings-status">{cacheStatus}</p> : null}
-        {cacheError ? <p className="settings-error">{cacheError}</p> : null}
+        {cacheStatus ? <p className="settings-status" role="status">{cacheStatus}</p> : null}
+        {cacheError ? <p className="settings-error" role="alert">{cacheError}</p> : null}
       </section>
 
       <section className="settings-section" aria-labelledby="playback-settings-heading">
