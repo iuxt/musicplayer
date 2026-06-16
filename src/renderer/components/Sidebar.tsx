@@ -55,7 +55,7 @@ export function Sidebar({
         })}
       </nav>
 
-      <div className="sidebar-footer" style={{ marginTop: "auto", display: "grid", gap: 12 }}>
+      <div className="sidebar-footer">
         <button className={`nav-item ${activeView === "settings" ? "active" : ""}`} onClick={onSettingsOpen} type="button">
           <Settings size={18} />
           Settings
