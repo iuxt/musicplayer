@@ -15,13 +15,13 @@ type SettingsStorage = Pick<Storage, "getItem" | "setItem">;
 export function readAppSettings(storage: SettingsStorage = localStorage): AppSettings {
   const savedValue = storage.getItem(APP_SETTINGS_STORAGE_KEY);
   if (!savedValue) {
-    return DEFAULT_APP_SETTINGS;
+    return defaultAppSettings();
   }
 
   try {
     return normalizeAppSettings(JSON.parse(savedValue) as unknown);
   } catch {
-    return DEFAULT_APP_SETTINGS;
+    return defaultAppSettings();
   }
 }
 
@@ -31,7 +31,7 @@ export function writeAppSettings(settings: AppSettings, storage: SettingsStorage
 
 export function normalizeAppSettings(value: unknown): AppSettings {
   if (!isRecord(value)) {
-    return DEFAULT_APP_SETTINGS;
+    return defaultAppSettings();
   }
 
   const fontSize = value.fullscreenLyricsFontSize;
@@ -41,7 +41,7 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     fontSize < MIN_FULLSCREEN_LYRICS_FONT_SIZE ||
     fontSize > MAX_FULLSCREEN_LYRICS_FONT_SIZE
   ) {
-    return DEFAULT_APP_SETTINGS;
+    return defaultAppSettings();
   }
 
   return {
@@ -51,4 +51,8 @@ export function normalizeAppSettings(value: unknown): AppSettings {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function defaultAppSettings(): AppSettings {
+  return { ...DEFAULT_APP_SETTINGS };
 }

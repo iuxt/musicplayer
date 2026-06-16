@@ -36,6 +36,14 @@ describe("appSettings", () => {
     expect(readAppSettings(storage)).toEqual({ fullscreenLyricsFontSize: MAX_FULLSCREEN_LYRICS_FONT_SIZE });
   });
 
+  it("rounds a valid persisted decimal fullscreen lyrics font size", () => {
+    const storage = makeStorage({
+      [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({ fullscreenLyricsFontSize: 36.6 })
+    });
+
+    expect(readAppSettings(storage)).toEqual({ fullscreenLyricsFontSize: 37 });
+  });
+
   it("writes normalized settings", () => {
     const storage = makeStorage();
 
@@ -45,6 +53,15 @@ describe("appSettings", () => {
       APP_SETTINGS_STORAGE_KEY,
       JSON.stringify({ fullscreenLyricsFontSize: MIN_FULLSCREEN_LYRICS_FONT_SIZE })
     );
+  });
+
+  it("returns fallback settings without exposing the default settings object", () => {
+    const settings = readAppSettings(makeStorage());
+
+    settings.fullscreenLyricsFontSize = 48;
+
+    expect(DEFAULT_APP_SETTINGS).toEqual({ fullscreenLyricsFontSize: 36 });
+    expect(readAppSettings(makeStorage())).toEqual({ fullscreenLyricsFontSize: 36 });
   });
 });
 
