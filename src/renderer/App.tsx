@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ScanProgress, ScanResult, ScanWarning, Track, TrackMetadataUpdate } from "../shared/types";
+import { type AppSettings, normalizeAppSettings, readAppSettings, writeAppSettings } from "./appSettings";
 import { EditTrackMetadataDialog } from "./components/EditTrackMetadataDialog";
 import { EmptyState } from "./components/EmptyState";
 import { FullscreenLyrics } from "./components/FullscreenLyrics";
@@ -7,6 +8,7 @@ import { LibraryList } from "./components/LibraryList";
 import { PlayerBar } from "./components/PlayerBar";
 import { Playlist } from "./components/Playlist";
 import { ScanningState } from "./components/ScanningState";
+import { SettingsPage } from "./components/SettingsPage";
 import { Sidebar } from "./components/Sidebar";
 import { TrackContextMenu } from "./components/TrackContextMenu";
 import { getParentFolderPath, getTracksAtFolderLevel } from "./folderBrowser";
@@ -26,6 +28,8 @@ type PlaybackState = {
   playlistLabel: string;
 };
 
+type AppView = "library" | "settings";
+
 export function App() {
   const [folderPath, setFolderPath] = useState<string | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
@@ -34,6 +38,10 @@ export function App() {
   const [isScanning, setIsScanning] = useState(false);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<LibraryCategory>("songs");
+  const [activeView, setActiveView] = useState<AppView>("library");
+  const [appSettings, setAppSettings] = useState<AppSettings>(() => readAppSettings());
+  const [cacheStatus, setCacheStatus] = useState<string | null>(null);
+  const [cacheError, setCacheError] = useState<string | null>(null);
   const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(null);
   const [playQueue, setPlayQueue] = useState<Track[]>([]);
   const [isPlayQueueExplicit, setIsPlayQueueExplicit] = useState(false);
@@ -323,9 +331,37 @@ export function App() {
   }, [player.currentTrack]);
 
   const changeCategory = useCallback((category: LibraryCategory) => {
+    setActiveView("library");
     setActiveCategory(category);
     if (category !== "folders") {
       setSelectedFolderPath(null);
+    }
+  }, []);
+
+  const openSettings = useCallback(() => {
+    setActiveView("settings");
+    setCacheStatus(null);
+    setCacheError(null);
+  }, []);
+
+  const clearLibraryCache = useCallback(() => {
+    setCacheStatus(null);
+    setCacheError(null);
+    try {
+      localStorage.removeItem(LIBRARY_CACHE_STORAGE_KEY);
+      setCacheStatus("Library cache cleared.");
+    } catch {
+      setCacheError("Unable to clear the library cache.");
+    }
+  }, []);
+
+  const changeFullscreenLyricsFontSize = useCallback((fontSize: number) => {
+    const nextSettings = normalizeAppSettings({ fullscreenLyricsFontSize: fontSize });
+    setAppSettings(nextSettings);
+    try {
+      writeAppSettings(nextSettings);
+    } catch {
+      setAppError("Unable to save settings.");
     }
   }, []);
 
@@ -547,7 +583,9 @@ export function App() {
         folderPath={folderPath}
         trackCount={tracks.length}
         activeCategory={activeCategory}
+        activeView={activeView}
         onCategoryChange={changeCategory}
+        onSettingsOpen={openSettings}
       />
 
       <main className="main-stage">
@@ -555,7 +593,19 @@ export function App() {
         {appError ? <div className="app-error">{appError}</div> : null}
         {warnings.length > 0 ? <div className="warning-strip">{warnings.length} files skipped while scanning.</div> : null}
 
-        {tracks.length === 0 ? (
+        {activeView === "settings" ? (
+          <SettingsPage
+            folderPath={folderPath}
+            isScanning={isScanning}
+            fullscreenLyricsFontSize={appSettings.fullscreenLyricsFontSize}
+            cacheStatus={cacheStatus}
+            cacheError={cacheError}
+            onChooseFolder={chooseFolder}
+            onRescanLibrary={rescan}
+            onClearLibraryCache={clearLibraryCache}
+            onFullscreenLyricsFontSizeChange={changeFullscreenLyricsFontSize}
+          />
+        ) : tracks.length === 0 ? (
           <EmptyState onChooseFolder={chooseFolder} isScanning={isScanning} />
         ) : (
           <div className="library-workspace">
@@ -590,7 +640,7 @@ export function App() {
           lyrics={lyrics}
           isLyricsLoading={isLyricsLoading}
           currentTime={player.currentTime}
-          fullscreenLyricsFontSize={36}
+          fullscreenLyricsFontSize={appSettings.fullscreenLyricsFontSize}
           onClose={() => setIsFullscreenLyricsOpen(false)}
         />
       ) : null}

@@ -1,11 +1,13 @@
-import { Disc3, Folder, ListMusic, Mic2, Music2 } from "lucide-react";
+import { Disc3, Folder, ListMusic, Mic2, Music2, Settings } from "lucide-react";
 import { libraryCategories, type LibraryCategory } from "../libraryCategories";
 
 interface SidebarProps {
   folderPath: string | null;
   trackCount: number;
   activeCategory: LibraryCategory;
+  activeView: "library" | "settings";
   onCategoryChange: (category: LibraryCategory) => void;
+  onSettingsOpen: () => void;
 }
 
 const categoryIcons = {
@@ -15,7 +17,14 @@ const categoryIcons = {
   folders: Folder
 };
 
-export function Sidebar({ folderPath, trackCount, activeCategory, onCategoryChange }: SidebarProps) {
+export function Sidebar({
+  folderPath,
+  trackCount,
+  activeCategory,
+  activeView,
+  onCategoryChange,
+  onSettingsOpen
+}: SidebarProps) {
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -46,7 +55,14 @@ export function Sidebar({ folderPath, trackCount, activeCategory, onCategoryChan
         })}
       </nav>
 
-      {folderPath ? <p className="folder-path">{folderPath}</p> : null}
+      <div className="sidebar-footer">
+        <button className={`nav-item ${activeView === "settings" ? "active" : ""}`} onClick={onSettingsOpen} type="button">
+          <Settings size={18} />
+          Settings
+        </button>
+
+        {folderPath ? <p className="folder-path">{folderPath}</p> : null}
+      </div>
     </aside>
   );
 }

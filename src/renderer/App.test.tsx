@@ -15,6 +15,7 @@ const scanResult: ScanResult = {
 };
 const libraryCacheKey = "local-music-player:library-cache";
 const playbackStateKey = "local-music-player:playback-state";
+const appSettingsKey = "local-music-player:settings";
 
 let menuHandler: ((command: "choose-folder" | "rescan-library") => void) | null = null;
 let createdAudioElements: HTMLAudioElement[] = [];
@@ -22,6 +23,7 @@ let createdAudioElements: HTMLAudioElement[] = [];
 beforeEach(() => {
   localStorage.clear();
   createdAudioElements = [];
+  Element.prototype.scrollIntoView = vi.fn();
   vi.stubGlobal(
     "Audio",
     vi.fn(() => {
@@ -478,6 +480,84 @@ describe("App", () => {
     expect(within(playlist).getByText("Second Song")).toBeTruthy();
     expect(within(playlist).getByText("Third Song")).toBeTruthy();
     expect(within(playlist).queryByText("Wave Song")).toBeNull();
+  });
+
+  it("opens settings from the sidebar and returns to the library from a category", async () => {
+    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+
+    expect(screen.getByRole("region", { name: "Settings" })).toBeTruthy();
+    expect(screen.getByRole("contentinfo")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Albums" }));
+
+    expect(await screen.findByRole("heading", { name: "Albums" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Settings" })).toBeNull();
+  });
+
+  it("clears only the library cache from settings", async () => {
+    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+    localStorage.setItem(
+      playbackStateKey,
+      JSON.stringify({
+        trackId: track.id,
+        currentTime: 12,
+        queueTrackIds: [track.id],
+        isPlayQueueExplicit: true,
+        playlistLabel: "Library"
+      })
+    );
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear Library Cache" }));
+
+    expect(localStorage.getItem(libraryCacheKey)).toBeNull();
+    expect(localStorage.getItem("local-music-player:last-folder")).toBe(rememberedFolder);
+    expect(localStorage.getItem(playbackStateKey)).not.toBeNull();
+    expect(screen.getByText("Library cache cleared.")).toBeTruthy();
+  });
+
+  it("persists fullscreen lyrics font size and applies it to fullscreen lyrics", async () => {
+    const trackWithLyrics = { ...track, lyricsPath: "/music/Wave Song.lrc", hasLyrics: true };
+    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify({ ...scanResult, tracks: [trackWithLyrics] }));
+    window.musicApi.getLyrics = vi.fn(async () => "[00:00.00]Preview lyric");
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.change(screen.getByLabelText("Fullscreen lyrics font size"), { target: { value: "48" } });
+
+    expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toEqual({ fullscreenLyricsFontSize: 48 });
+
+    fireEvent.click(screen.getByRole("button", { name: "Songs" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Open fullscreen lyrics" }));
+
+    expect(await screen.findByText("Preview lyric")).toBeTruthy();
+    const fullscreenLyrics = screen.getByRole("region", { name: "Fullscreen lyrics" });
+    expect((fullscreenLyrics as HTMLElement).style.getPropertyValue("--fullscreen-lyrics-font-size")).toBe("48px");
+  });
+
+  it("falls back to the default fullscreen lyrics font size when saved settings are invalid", () => {
+    localStorage.setItem(appSettingsKey, JSON.stringify({ fullscreenLyricsFontSize: 72 }));
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+
+    expect((screen.getByLabelText("Fullscreen lyrics font size") as HTMLInputElement).value).toBe("36");
   });
 });
 
