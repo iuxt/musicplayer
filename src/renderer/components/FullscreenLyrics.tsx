@@ -1,5 +1,5 @@
 import { Disc3, X } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import type { Track } from "../../shared/types";
 
 interface FullscreenLyricsProps {
@@ -8,6 +8,7 @@ interface FullscreenLyricsProps {
   lyrics: string | null;
   isLyricsLoading: boolean;
   currentTime: number;
+  fullscreenLyricsFontSize: number;
   onClose: () => void;
 }
 
@@ -23,11 +24,15 @@ export function FullscreenLyrics({
   lyrics,
   isLyricsLoading,
   currentTime,
+  fullscreenLyricsFontSize,
   onClose
 }: FullscreenLyricsProps) {
   const activeLineRef = useRef<HTMLDivElement | null>(null);
   const lines = useMemo(() => parseLyrics(lyrics), [lyrics]);
   const activeIndex = useMemo(() => findActiveLine(lines, currentTime), [currentTime, lines]);
+  const lyricsStyle = {
+    "--fullscreen-lyrics-font-size": `${fullscreenLyricsFontSize}px`
+  } as CSSProperties & Record<"--fullscreen-lyrics-font-size", string>;
 
   useEffect(() => {
     activeLineRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -44,7 +49,7 @@ export function FullscreenLyrics({
   }, [onClose]);
 
   return (
-    <section className="fullscreen-lyrics" aria-label="Fullscreen lyrics">
+    <section className="fullscreen-lyrics" aria-label="Fullscreen lyrics" style={lyricsStyle}>
       <button className="fullscreen-close" type="button" aria-label="Close fullscreen lyrics" onClick={onClose}>
         <X size={24} />
       </button>

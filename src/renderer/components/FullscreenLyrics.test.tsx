@@ -18,12 +18,30 @@ describe("FullscreenLyrics", () => {
         lyrics={"[00:01.00]First line\n[00:12.50]Current line\n[00:30.00]Later line"}
         isLyricsLoading={false}
         currentTime={13}
+        fullscreenLyricsFontSize={36}
         onClose={() => undefined}
       />
     );
 
     expect(screen.getByText("Current line").className).toContain("active");
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+  });
+
+  it("applies the configured fullscreen lyrics font size", () => {
+    render(
+      <FullscreenLyrics
+        track={track}
+        artworkUrl="file:///cover.jpg"
+        lyrics={"[00:01.00]Custom size line"}
+        isLyricsLoading={false}
+        currentTime={2}
+        fullscreenLyricsFontSize={48}
+        onClose={() => undefined}
+      />
+    );
+
+    const fullscreenLyrics = screen.getByRole("region", { name: "Fullscreen lyrics" });
+    expect((fullscreenLyrics as HTMLElement).style.getPropertyValue("--fullscreen-lyrics-font-size")).toBe("48px");
   });
 });
 
