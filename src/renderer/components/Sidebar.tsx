@@ -43,7 +43,7 @@ export function Sidebar({
 
           return (
             <button
-              className={`nav-item ${activeCategory === category.id ? "active" : ""}`}
+              className={`nav-item ${activeView === "library" && activeCategory === category.id ? "active" : ""}`}
               key={category.id}
               onClick={() => onCategoryChange(category.id)}
               type="button"
@@ -55,7 +55,7 @@ export function Sidebar({
         })}
       </nav>
 
-      <div className="sidebar-footer">
+      <div className="sidebar-footer" style={{ marginTop: "auto", display: "grid", gap: 12 }}>
         <button className={`nav-item ${activeView === "settings" ? "active" : ""}`} onClick={onSettingsOpen} type="button">
           <Settings size={18} />
           Settings

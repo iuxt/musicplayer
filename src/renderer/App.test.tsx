@@ -493,6 +493,8 @@ describe("App", () => {
 
     expect(screen.getByRole("region", { name: "Settings" })).toBeTruthy();
     expect(screen.getByRole("contentinfo")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Settings" }).className).toContain("active");
+    expect(screen.getByRole("button", { name: "Songs" }).className).not.toContain("active");
 
     fireEvent.click(screen.getByRole("button", { name: "Albums" }));
 
