@@ -15,6 +15,17 @@ describe("appSettings", () => {
     expect(readAppSettings(storage)).toEqual(DEFAULT_APP_SETTINGS);
   });
 
+  it("returns defaults when storage read throws", () => {
+    const storage = {
+      getItem: vi.fn(() => {
+        throw new Error("Storage unavailable");
+      }),
+      setItem: vi.fn()
+    };
+
+    expect(readAppSettings(storage)).toEqual(DEFAULT_APP_SETTINGS);
+  });
+
   it("returns defaults for invalid JSON and out-of-range font sizes", () => {
     expect(readAppSettings(makeStorage({ [APP_SETTINGS_STORAGE_KEY]: "not-json" }))).toEqual(DEFAULT_APP_SETTINGS);
     expect(
