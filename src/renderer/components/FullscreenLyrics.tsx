@@ -1,6 +1,7 @@
 import { Disc3, X } from "lucide-react";
 import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import type { Track } from "../../shared/types";
+import { findActiveLineIndex, parseLyrics } from "../lyrics";
 
 interface FullscreenLyricsProps {
   track: Track | null;
@@ -8,14 +9,9 @@ interface FullscreenLyricsProps {
   lyrics: string | null;
   isLyricsLoading: boolean;
   currentTime: number;
+  fullscreenLyricsFontFamily: string;
   fullscreenLyricsFontSize: number;
   onClose: () => void;
-}
-
-interface LyricLine {
-  id: string;
-  time: number | null;
-  text: string;
 }
 
 export function FullscreenLyrics({
@@ -24,15 +20,19 @@ export function FullscreenLyrics({
   lyrics,
   isLyricsLoading,
   currentTime,
+  fullscreenLyricsFontFamily,
   fullscreenLyricsFontSize,
   onClose
 }: FullscreenLyricsProps) {
   const activeLineRef = useRef<HTMLDivElement | null>(null);
   const lines = useMemo(() => parseLyrics(lyrics), [lyrics]);
-  const activeIndex = useMemo(() => findActiveLine(lines, currentTime), [currentTime, lines]);
+  const activeIndex = useMemo(() => findActiveLineIndex(lines, currentTime), [currentTime, lines]);
   const lyricsStyle = {
+    "--fullscreen-lyrics-font-family": fullscreenLyricsFontFamily
+      ? `"${fullscreenLyricsFontFamily}", ui-sans-serif, system-ui, sans-serif`
+      : "ui-sans-serif, system-ui, sans-serif",
     "--fullscreen-lyrics-font-size": `${fullscreenLyricsFontSize}px`
-  } as CSSProperties & Record<"--fullscreen-lyrics-font-size", string>;
+  } as CSSProperties & Record<"--fullscreen-lyrics-font-family" | "--fullscreen-lyrics-font-size", string>;
 
   useEffect(() => {
     activeLineRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -92,43 +92,4 @@ export function FullscreenLyrics({
       </div>
     </section>
   );
-}
-
-function parseLyrics(lyrics: string | null): LyricLine[] {
-  if (!lyrics) {
-    return [];
-  }
-
-  return lyrics
-    .split(/\r?\n/)
-    .flatMap<LyricLine>((line, index) => {
-      const timestamps = [...line.matchAll(/\[(\d{1,2}):(\d{2})(?:\.(\d{1,3}))?\]/g)];
-      const text = line.replace(/\[[^\]]+\]/g, "").trim();
-      if (!text) {
-        return [];
-      }
-      if (timestamps.length === 0) {
-        return [{ id: `plain-${index}`, time: null, text }];
-      }
-      return timestamps.map<LyricLine>((match, timestampIndex) => ({
-        id: `${index}-${timestampIndex}`,
-        time: Number(match[1]) * 60 + Number(match[2]) + Number(`0.${(match[3] ?? "0").padEnd(3, "0")}`),
-        text
-      }));
-    })
-    .sort((left, right) => (left.time ?? Number.MAX_SAFE_INTEGER) - (right.time ?? Number.MAX_SAFE_INTEGER));
-}
-
-function findActiveLine(lines: LyricLine[], currentTime: number) {
-  let activeIndex = -1;
-
-  for (let index = 0; index < lines.length; index += 1) {
-    const time = lines[index].time;
-    if (time === null || time > currentTime) {
-      break;
-    }
-    activeIndex = index;
-  }
-
-  return activeIndex;
 }

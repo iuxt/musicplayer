@@ -18,6 +18,7 @@ describe("FullscreenLyrics", () => {
         lyrics={"[00:01.00]First line\n[00:12.50]Current line\n[00:30.00]Later line"}
         isLyricsLoading={false}
         currentTime={13}
+        fullscreenLyricsFontFamily="PingFang SC"
         fullscreenLyricsFontSize={36}
         onClose={() => undefined}
       />
@@ -27,7 +28,7 @@ describe("FullscreenLyrics", () => {
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
   });
 
-  it("applies the configured fullscreen lyrics font size", () => {
+  it("applies the configured fullscreen lyrics font family and size", () => {
     render(
       <FullscreenLyrics
         track={track}
@@ -35,12 +36,14 @@ describe("FullscreenLyrics", () => {
         lyrics={"[00:01.00]Custom size line"}
         isLyricsLoading={false}
         currentTime={2}
+        fullscreenLyricsFontFamily="PingFang SC"
         fullscreenLyricsFontSize={48}
         onClose={() => undefined}
       />
     );
 
     const fullscreenLyrics = screen.getByRole("region", { name: "全屏歌词" });
+    expect((fullscreenLyrics as HTMLElement).style.getPropertyValue("--fullscreen-lyrics-font-family")).toContain("PingFang SC");
     expect((fullscreenLyrics as HTMLElement).style.getPropertyValue("--fullscreen-lyrics-font-size")).toBe("48px");
   });
 });
