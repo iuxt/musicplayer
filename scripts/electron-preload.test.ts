@@ -11,7 +11,7 @@ describe("Electron preload packaging", () => {
     expect(mainSource).toContain("preload.cjs");
   });
 
-  it("exposes track context menu APIs", async () => {
+  it("exposes track context menu and desktop lyrics APIs", async () => {
     const preloadSource = await readFile(path.join(process.cwd(), "electron/preload.cts"), "utf8");
     const mainSource = await readFile(path.join(process.cwd(), "electron/main.ts"), "utf8");
 
@@ -19,6 +19,13 @@ describe("Electron preload packaging", () => {
     expect(preloadSource).toContain("updateTrackMetadata");
     expect(preloadSource).toContain("trashTrackLyrics");
     expect(preloadSource).toContain("trashTrackFiles");
+    expect(preloadSource).toContain("listSystemFonts");
+    expect(preloadSource).toContain("showDesktopLyrics");
+    expect(preloadSource).toContain("closeDesktopLyrics");
+    expect(preloadSource).toContain("updateDesktopLyrics");
+    expect(preloadSource).toContain("onDesktopLyricsUpdate");
+    expect(preloadSource).toContain("onDesktopLyricsClosed");
+    expect(preloadSource).toContain("openMainSettingsFromDesktopLyrics");
     expect(mainSource).toContain("media:show-track-in-folder");
     expect(mainSource).toContain("media:update-track-metadata");
     expect(mainSource).toContain("media:trash-track-lyrics");

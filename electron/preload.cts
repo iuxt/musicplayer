@@ -1,5 +1,11 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
-import type { ScanProgress, ScanResult, Track, TrackMetadataUpdate } from "../src/shared/types.js";
+import type {
+  DesktopLyricsPayload,
+  ScanProgress,
+  ScanResult,
+  Track,
+  TrackMetadataUpdate
+} from "../src/shared/types.js";
 
 type MenuCommand = "choose-folder" | "rescan-library";
 
@@ -14,6 +20,21 @@ contextBridge.exposeInMainWorld("musicApi", {
     ipcRenderer.invoke("media:update-track-metadata", filePath, metadata),
   trashTrackLyrics: (track: Track) => ipcRenderer.invoke("media:trash-track-lyrics", track),
   trashTrackFiles: (track: Track) => ipcRenderer.invoke("media:trash-track-files", track),
+  listSystemFonts: (): Promise<string[]> => ipcRenderer.invoke("fonts:list-system"),
+  showDesktopLyrics: (): Promise<void> => ipcRenderer.invoke("desktop-lyrics:show"),
+  closeDesktopLyrics: (): Promise<void> => ipcRenderer.invoke("desktop-lyrics:close"),
+  updateDesktopLyrics: (payload: DesktopLyricsPayload): Promise<void> => ipcRenderer.invoke("desktop-lyrics:update", payload),
+  openMainSettingsFromDesktopLyrics: (): Promise<void> => ipcRenderer.invoke("desktop-lyrics:open-settings"),
+  onDesktopLyricsUpdate: (callback: (payload: DesktopLyricsPayload) => void) => {
+    const listener = (_event: IpcRendererEvent, payload: DesktopLyricsPayload) => callback(payload);
+    ipcRenderer.on("desktop-lyrics:update", listener);
+    return () => ipcRenderer.removeListener("desktop-lyrics:update", listener);
+  },
+  onDesktopLyricsClosed: (callback: () => void) => {
+    const listener = () => callback();
+    ipcRenderer.on("desktop-lyrics:closed", listener);
+    return () => ipcRenderer.removeListener("desktop-lyrics:closed", listener);
+  },
   onScanProgress: (callback: (progress: ScanProgress) => void) => {
     const listener = (_event: IpcRendererEvent, progress: ScanProgress) => callback(progress);
     ipcRenderer.on("library:scan-progress", listener);
