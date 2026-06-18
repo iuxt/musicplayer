@@ -51,6 +51,39 @@ describe("appSettings", () => {
     ).toEqual(DEFAULT_APP_SETTINGS);
   });
 
+  it("returns defaults for explicitly invalid persisted lyric fields", () => {
+    expect(
+      readAppSettings(
+        makeStorage({
+          [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
+            fullscreenLyricsFontSize: 40,
+            desktopLyricsFontSize: null
+          })
+        })
+      )
+    ).toEqual(DEFAULT_APP_SETTINGS);
+    expect(
+      readAppSettings(
+        makeStorage({
+          [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
+            fullscreenLyricsFontSize: 40,
+            desktopLyricsEnabled: null
+          })
+        })
+      )
+    ).toEqual(DEFAULT_APP_SETTINGS);
+    expect(
+      readAppSettings(
+        makeStorage({
+          [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
+            fullscreenLyricsFontSize: 40,
+            desktopLyricsFontFamily: null
+          })
+        })
+      )
+    ).toEqual(DEFAULT_APP_SETTINGS);
+  });
+
   it("migrates a valid legacy fullscreen lyrics font size", () => {
     const storage = makeStorage({
       [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({ fullscreenLyricsFontSize: MAX_FULLSCREEN_LYRICS_FONT_SIZE })
@@ -105,11 +138,11 @@ describe("appSettings", () => {
 
     writeAppSettings(
       {
-        fullscreenLyricsFontFamily: "PingFang SC",
-        fullscreenLyricsFontSize: MIN_FULLSCREEN_LYRICS_FONT_SIZE,
+        fullscreenLyricsFontFamily: "  PingFang SC  ",
+        fullscreenLyricsFontSize: MIN_FULLSCREEN_LYRICS_FONT_SIZE + 0.6,
         desktopLyricsEnabled: true,
-        desktopLyricsFontFamily: "LXGW WenKai",
-        desktopLyricsFontSize: MIN_DESKTOP_LYRICS_FONT_SIZE
+        desktopLyricsFontFamily: "  LXGW WenKai  ",
+        desktopLyricsFontSize: MIN_DESKTOP_LYRICS_FONT_SIZE + 0.4
       },
       storage
     );
@@ -118,7 +151,7 @@ describe("appSettings", () => {
       APP_SETTINGS_STORAGE_KEY,
       JSON.stringify({
         fullscreenLyricsFontFamily: "PingFang SC",
-        fullscreenLyricsFontSize: MIN_FULLSCREEN_LYRICS_FONT_SIZE,
+        fullscreenLyricsFontSize: MIN_FULLSCREEN_LYRICS_FONT_SIZE + 1,
         desktopLyricsEnabled: true,
         desktopLyricsFontFamily: "LXGW WenKai",
         desktopLyricsFontSize: MIN_DESKTOP_LYRICS_FONT_SIZE

@@ -53,7 +53,11 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     return defaultAppSettings();
   }
 
-  const desktopFontSizeValue = value.desktopLyricsFontSize ?? DEFAULT_APP_SETTINGS.desktopLyricsFontSize;
+  const desktopFontSizeValue = getValueOrDefault(
+    value,
+    "desktopLyricsFontSize",
+    DEFAULT_APP_SETTINGS.desktopLyricsFontSize
+  );
   const desktopFontSize = normalizeFontSize(
     desktopFontSizeValue,
     MIN_DESKTOP_LYRICS_FONT_SIZE,
@@ -63,9 +67,21 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     return defaultAppSettings();
   }
 
-  const fullscreenFontFamily = value.fullscreenLyricsFontFamily ?? DEFAULT_APP_SETTINGS.fullscreenLyricsFontFamily;
-  const desktopFontFamily = value.desktopLyricsFontFamily ?? DEFAULT_APP_SETTINGS.desktopLyricsFontFamily;
-  const desktopLyricsEnabled = value.desktopLyricsEnabled ?? DEFAULT_APP_SETTINGS.desktopLyricsEnabled;
+  const fullscreenFontFamily = getValueOrDefault(
+    value,
+    "fullscreenLyricsFontFamily",
+    DEFAULT_APP_SETTINGS.fullscreenLyricsFontFamily
+  );
+  const desktopFontFamily = getValueOrDefault(
+    value,
+    "desktopLyricsFontFamily",
+    DEFAULT_APP_SETTINGS.desktopLyricsFontFamily
+  );
+  const desktopLyricsEnabled = getValueOrDefault(
+    value,
+    "desktopLyricsEnabled",
+    DEFAULT_APP_SETTINGS.desktopLyricsEnabled
+  );
 
   if (
     typeof fullscreenFontFamily !== "string" ||
@@ -94,6 +110,10 @@ function normalizeFontSize(value: unknown, min: number, max: number) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function getValueOrDefault(value: Record<string, unknown>, key: string, defaultValue: unknown) {
+  return Object.prototype.hasOwnProperty.call(value, key) ? value[key] : defaultValue;
 }
 
 function defaultAppSettings(): AppSettings {
