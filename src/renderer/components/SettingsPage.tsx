@@ -1,31 +1,51 @@
 import { FolderOpen, RefreshCw, Trash2 } from "lucide-react";
 import {
+  MAX_DESKTOP_LYRICS_FONT_SIZE,
   MAX_FULLSCREEN_LYRICS_FONT_SIZE,
+  MIN_DESKTOP_LYRICS_FONT_SIZE,
   MIN_FULLSCREEN_LYRICS_FONT_SIZE
 } from "../appSettings";
 
 interface SettingsPageProps {
   folderPath: string | null;
   isScanning: boolean;
+  availableFontFamilies: string[];
+  fullscreenLyricsFontFamily: string;
   fullscreenLyricsFontSize: number;
+  desktopLyricsEnabled: boolean;
+  desktopLyricsFontFamily: string;
+  desktopLyricsFontSize: number;
   cacheStatus: string | null;
   cacheError: string | null;
   onChooseFolder: () => void;
   onRescanLibrary: () => void;
   onClearLibraryCache: () => void;
+  onFullscreenLyricsFontFamilyChange: (fontFamily: string) => void;
   onFullscreenLyricsFontSizeChange: (fontSize: number) => void;
+  onDesktopLyricsEnabledChange: (enabled: boolean) => void;
+  onDesktopLyricsFontFamilyChange: (fontFamily: string) => void;
+  onDesktopLyricsFontSizeChange: (fontSize: number) => void;
 }
 
 export function SettingsPage({
   folderPath,
   isScanning,
+  availableFontFamilies,
+  fullscreenLyricsFontFamily,
   fullscreenLyricsFontSize,
+  desktopLyricsEnabled,
+  desktopLyricsFontFamily,
+  desktopLyricsFontSize,
   cacheStatus,
   cacheError,
   onChooseFolder,
   onRescanLibrary,
   onClearLibraryCache,
-  onFullscreenLyricsFontSizeChange
+  onFullscreenLyricsFontFamilyChange,
+  onFullscreenLyricsFontSizeChange,
+  onDesktopLyricsEnabledChange,
+  onDesktopLyricsFontFamilyChange,
+  onDesktopLyricsFontSizeChange
 }: SettingsPageProps) {
   return (
     <section className="settings-page" aria-label="设置">
@@ -73,24 +93,92 @@ export function SettingsPage({
       <section className="settings-section" aria-labelledby="lyrics-settings-heading">
         <div className="settings-section-heading">
           <h3 id="lyrics-settings-heading">歌词</h3>
-          <p>调整全屏歌词的可读性，不影响应用其他部分。</p>
+          <p>分别调整全屏歌词和桌面歌词的字体。</p>
         </div>
-        <label className="lyrics-size-control">
-          <span>全屏歌词字号</span>
-          <strong>{fullscreenLyricsFontSize}px</strong>
-          <input
-            aria-label="全屏歌词字号"
-            max={MAX_FULLSCREEN_LYRICS_FONT_SIZE}
-            min={MIN_FULLSCREEN_LYRICS_FONT_SIZE}
-            onChange={(event) => onFullscreenLyricsFontSizeChange(Number(event.target.value))}
-            step="1"
-            type="range"
-            value={fullscreenLyricsFontSize}
-          />
-        </label>
-        <p className="lyrics-preview" style={{ fontSize: `${fullscreenLyricsFontSize}px` }}>
-          歌词预览行
-        </p>
+
+        <div className="lyrics-settings-group">
+          <h4>全屏歌词</h4>
+          <label className="lyrics-select-control">
+            <span>字体</span>
+            <select
+              aria-label="全屏歌词字体"
+              onChange={(event) => onFullscreenLyricsFontFamilyChange(event.target.value)}
+              value={fullscreenLyricsFontFamily}
+            >
+              {availableFontFamilies.map((fontFamily) => (
+                <option key={fontFamily || "system-default"} value={fontFamily}>
+                  {fontFamily || "系统默认"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="lyrics-size-control">
+            <span>字号</span>
+            <strong>{fullscreenLyricsFontSize}px</strong>
+            <input
+              aria-label="全屏歌词字号"
+              max={MAX_FULLSCREEN_LYRICS_FONT_SIZE}
+              min={MIN_FULLSCREEN_LYRICS_FONT_SIZE}
+              onChange={(event) => onFullscreenLyricsFontSizeChange(Number(event.target.value))}
+              step="1"
+              type="range"
+              value={fullscreenLyricsFontSize}
+            />
+          </label>
+          <p
+            className="lyrics-preview"
+            style={{ fontFamily: fullscreenLyricsFontFamily || undefined, fontSize: `${fullscreenLyricsFontSize}px` }}
+          >
+            全屏歌词预览行
+          </p>
+        </div>
+
+        <div className="lyrics-settings-group">
+          <h4>桌面歌词</h4>
+          <label className="setting-toggle">
+            <input
+              aria-label="显示桌面歌词"
+              checked={desktopLyricsEnabled}
+              onChange={(event) => onDesktopLyricsEnabledChange(event.target.checked)}
+              type="checkbox"
+            />
+            <span>显示桌面歌词</span>
+          </label>
+          <label className="lyrics-select-control">
+            <span>字体</span>
+            <select
+              aria-label="桌面歌词字体"
+              onChange={(event) => onDesktopLyricsFontFamilyChange(event.target.value)}
+              value={desktopLyricsFontFamily}
+            >
+              {availableFontFamilies.map((fontFamily) => (
+                <option key={fontFamily || "system-default"} value={fontFamily}>
+                  {fontFamily || "系统默认"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="lyrics-size-control">
+            <span>字号</span>
+            <strong>{desktopLyricsFontSize}px</strong>
+            <input
+              aria-label="桌面歌词字号"
+              max={MAX_DESKTOP_LYRICS_FONT_SIZE}
+              min={MIN_DESKTOP_LYRICS_FONT_SIZE}
+              onChange={(event) => onDesktopLyricsFontSizeChange(Number(event.target.value))}
+              step="1"
+              type="range"
+              value={desktopLyricsFontSize}
+            />
+          </label>
+          <div
+            className="desktop-lyrics-preview"
+            style={{ fontFamily: desktopLyricsFontFamily || undefined, fontSize: `${desktopLyricsFontSize}px` }}
+          >
+            <p>桌面歌词预览行</p>
+            <span>下一句歌词预览</span>
+          </div>
+        </div>
       </section>
     </section>
   );

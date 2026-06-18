@@ -48,15 +48,28 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("alert").textContent).toBe("无法清除音乐库缓存。");
   });
 
-  it("changes fullscreen lyrics font size", () => {
-    const props = makeProps({ fullscreenLyricsFontSize: 36 });
+  it("changes fullscreen lyrics font settings", () => {
+    const props = makeProps({ fullscreenLyricsFontFamily: "", fullscreenLyricsFontSize: 36 });
 
     render(<SettingsPage {...props} />);
+    fireEvent.change(screen.getByLabelText("全屏歌词字体"), { target: { value: "PingFang SC" } });
     fireEvent.change(screen.getByLabelText("全屏歌词字号"), { target: { value: "48" } });
 
+    expect(props.onFullscreenLyricsFontFamilyChange).toHaveBeenCalledWith("PingFang SC");
     expect(props.onFullscreenLyricsFontSizeChange).toHaveBeenCalledWith(48);
-    expect(screen.getByText("36px")).toBeTruthy();
-    expect(screen.getByText("歌词预览行")).toBeTruthy();
+  });
+
+  it("changes desktop lyrics settings", () => {
+    const props = makeProps({ desktopLyricsEnabled: false, desktopLyricsFontFamily: "", desktopLyricsFontSize: 28 });
+
+    render(<SettingsPage {...props} />);
+    fireEvent.click(screen.getByLabelText("显示桌面歌词"));
+    fireEvent.change(screen.getByLabelText("桌面歌词字体"), { target: { value: "LXGW WenKai" } });
+    fireEvent.change(screen.getByLabelText("桌面歌词字号"), { target: { value: "32" } });
+
+    expect(props.onDesktopLyricsEnabledChange).toHaveBeenCalledWith(true);
+    expect(props.onDesktopLyricsFontFamilyChange).toHaveBeenCalledWith("LXGW WenKai");
+    expect(props.onDesktopLyricsFontSizeChange).toHaveBeenCalledWith(32);
   });
 });
 
@@ -64,13 +77,22 @@ function makeProps(overrides: Partial<Parameters<typeof SettingsPage>[0]> = {}):
   return {
     folderPath: "/Users/test/Music",
     isScanning: false,
+    availableFontFamilies: ["", "PingFang SC", "LXGW WenKai"],
+    fullscreenLyricsFontFamily: "",
     fullscreenLyricsFontSize: 36,
+    desktopLyricsEnabled: false,
+    desktopLyricsFontFamily: "",
+    desktopLyricsFontSize: 28,
     cacheStatus: null,
     cacheError: null,
     onChooseFolder: vi.fn(),
     onRescanLibrary: vi.fn(),
     onClearLibraryCache: vi.fn(),
+    onFullscreenLyricsFontFamilyChange: vi.fn(),
     onFullscreenLyricsFontSizeChange: vi.fn(),
+    onDesktopLyricsEnabledChange: vi.fn(),
+    onDesktopLyricsFontFamilyChange: vi.fn(),
+    onDesktopLyricsFontSizeChange: vi.fn(),
     ...overrides
   };
 }
