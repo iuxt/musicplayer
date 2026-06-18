@@ -1,13 +1,23 @@
 export const APP_SETTINGS_STORAGE_KEY = "musicplayer:settings";
 export const MIN_FULLSCREEN_LYRICS_FONT_SIZE = 24;
 export const MAX_FULLSCREEN_LYRICS_FONT_SIZE = 56;
+export const MIN_DESKTOP_LYRICS_FONT_SIZE = 18;
+export const MAX_DESKTOP_LYRICS_FONT_SIZE = 44;
 
 export interface AppSettings {
+  fullscreenLyricsFontFamily: string;
   fullscreenLyricsFontSize: number;
+  desktopLyricsEnabled: boolean;
+  desktopLyricsFontFamily: string;
+  desktopLyricsFontSize: number;
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
-  fullscreenLyricsFontSize: 36
+  fullscreenLyricsFontFamily: "",
+  fullscreenLyricsFontSize: 36,
+  desktopLyricsEnabled: false,
+  desktopLyricsFontFamily: "",
+  desktopLyricsFontSize: 28
 };
 
 type SettingsStorage = Pick<Storage, "getItem" | "setItem">;
@@ -34,19 +44,52 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     return defaultAppSettings();
   }
 
-  const fontSize = value.fullscreenLyricsFontSize;
+  const fullscreenFontSize = normalizeFontSize(
+    value.fullscreenLyricsFontSize,
+    MIN_FULLSCREEN_LYRICS_FONT_SIZE,
+    MAX_FULLSCREEN_LYRICS_FONT_SIZE
+  );
+  if (fullscreenFontSize === null) {
+    return defaultAppSettings();
+  }
+
+  const desktopFontSizeValue = value.desktopLyricsFontSize ?? DEFAULT_APP_SETTINGS.desktopLyricsFontSize;
+  const desktopFontSize = normalizeFontSize(
+    desktopFontSizeValue,
+    MIN_DESKTOP_LYRICS_FONT_SIZE,
+    MAX_DESKTOP_LYRICS_FONT_SIZE
+  );
+  if (desktopFontSize === null) {
+    return defaultAppSettings();
+  }
+
+  const fullscreenFontFamily = value.fullscreenLyricsFontFamily ?? DEFAULT_APP_SETTINGS.fullscreenLyricsFontFamily;
+  const desktopFontFamily = value.desktopLyricsFontFamily ?? DEFAULT_APP_SETTINGS.desktopLyricsFontFamily;
+  const desktopLyricsEnabled = value.desktopLyricsEnabled ?? DEFAULT_APP_SETTINGS.desktopLyricsEnabled;
+
   if (
-    typeof fontSize !== "number" ||
-    !Number.isFinite(fontSize) ||
-    fontSize < MIN_FULLSCREEN_LYRICS_FONT_SIZE ||
-    fontSize > MAX_FULLSCREEN_LYRICS_FONT_SIZE
+    typeof fullscreenFontFamily !== "string" ||
+    typeof desktopFontFamily !== "string" ||
+    typeof desktopLyricsEnabled !== "boolean"
   ) {
     return defaultAppSettings();
   }
 
   return {
-    fullscreenLyricsFontSize: Math.round(fontSize)
+    fullscreenLyricsFontFamily: fullscreenFontFamily.trim(),
+    fullscreenLyricsFontSize: fullscreenFontSize,
+    desktopLyricsEnabled,
+    desktopLyricsFontFamily: desktopFontFamily.trim(),
+    desktopLyricsFontSize: desktopFontSize
   };
+}
+
+function normalizeFontSize(value: unknown, min: number, max: number) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < min || value > max) {
+    return null;
+  }
+
+  return Math.round(value);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -2,7 +2,9 @@ import { describe, expect, it, vi } from "vitest";
 import {
   APP_SETTINGS_STORAGE_KEY,
   DEFAULT_APP_SETTINGS,
+  MAX_DESKTOP_LYRICS_FONT_SIZE,
   MAX_FULLSCREEN_LYRICS_FONT_SIZE,
+  MIN_DESKTOP_LYRICS_FONT_SIZE,
   MIN_FULLSCREEN_LYRICS_FONT_SIZE,
   readAppSettings,
   writeAppSettings
@@ -37,32 +39,90 @@ describe("appSettings", () => {
     expect(
       readAppSettings(makeStorage({ [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({ fullscreenLyricsFontSize: "36" }) }))
     ).toEqual(DEFAULT_APP_SETTINGS);
+    expect(
+      readAppSettings(
+        makeStorage({
+          [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
+            fullscreenLyricsFontSize: 36,
+            desktopLyricsFontSize: 12
+          })
+        })
+      )
+    ).toEqual(DEFAULT_APP_SETTINGS);
   });
 
-  it("reads a valid persisted fullscreen lyrics font size", () => {
+  it("migrates a valid legacy fullscreen lyrics font size", () => {
     const storage = makeStorage({
       [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({ fullscreenLyricsFontSize: MAX_FULLSCREEN_LYRICS_FONT_SIZE })
     });
 
-    expect(readAppSettings(storage)).toEqual({ fullscreenLyricsFontSize: MAX_FULLSCREEN_LYRICS_FONT_SIZE });
+    expect(readAppSettings(storage)).toEqual({
+      ...DEFAULT_APP_SETTINGS,
+      fullscreenLyricsFontSize: MAX_FULLSCREEN_LYRICS_FONT_SIZE
+    });
   });
 
-  it("rounds a valid persisted decimal fullscreen lyrics font size", () => {
+  it("reads valid persisted lyric font settings", () => {
     const storage = makeStorage({
-      [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({ fullscreenLyricsFontSize: 36.6 })
+      [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
+        fullscreenLyricsFontFamily: "PingFang SC",
+        fullscreenLyricsFontSize: MAX_FULLSCREEN_LYRICS_FONT_SIZE,
+        desktopLyricsEnabled: true,
+        desktopLyricsFontFamily: "LXGW WenKai",
+        desktopLyricsFontSize: MAX_DESKTOP_LYRICS_FONT_SIZE
+      })
     });
 
-    expect(readAppSettings(storage)).toEqual({ fullscreenLyricsFontSize: 37 });
+    expect(readAppSettings(storage)).toEqual({
+      fullscreenLyricsFontFamily: "PingFang SC",
+      fullscreenLyricsFontSize: MAX_FULLSCREEN_LYRICS_FONT_SIZE,
+      desktopLyricsEnabled: true,
+      desktopLyricsFontFamily: "LXGW WenKai",
+      desktopLyricsFontSize: MAX_DESKTOP_LYRICS_FONT_SIZE
+    });
+  });
+
+  it("rounds valid persisted decimal lyric font sizes", () => {
+    const storage = makeStorage({
+      [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
+        fullscreenLyricsFontFamily: "",
+        fullscreenLyricsFontSize: 36.6,
+        desktopLyricsEnabled: false,
+        desktopLyricsFontFamily: "",
+        desktopLyricsFontSize: 28.4
+      })
+    });
+
+    expect(readAppSettings(storage)).toEqual({
+      ...DEFAULT_APP_SETTINGS,
+      fullscreenLyricsFontSize: 37,
+      desktopLyricsFontSize: 28
+    });
   });
 
   it("writes normalized settings", () => {
     const storage = makeStorage();
 
-    writeAppSettings({ fullscreenLyricsFontSize: MIN_FULLSCREEN_LYRICS_FONT_SIZE }, storage);
+    writeAppSettings(
+      {
+        fullscreenLyricsFontFamily: "PingFang SC",
+        fullscreenLyricsFontSize: MIN_FULLSCREEN_LYRICS_FONT_SIZE,
+        desktopLyricsEnabled: true,
+        desktopLyricsFontFamily: "LXGW WenKai",
+        desktopLyricsFontSize: MIN_DESKTOP_LYRICS_FONT_SIZE
+      },
+      storage
+    );
 
     expect(storage.setItem).toHaveBeenCalledWith(
       APP_SETTINGS_STORAGE_KEY,
-      JSON.stringify({ fullscreenLyricsFontSize: MIN_FULLSCREEN_LYRICS_FONT_SIZE })
+      JSON.stringify({
+        fullscreenLyricsFontFamily: "PingFang SC",
+        fullscreenLyricsFontSize: MIN_FULLSCREEN_LYRICS_FONT_SIZE,
+        desktopLyricsEnabled: true,
+        desktopLyricsFontFamily: "LXGW WenKai",
+        desktopLyricsFontSize: MIN_DESKTOP_LYRICS_FONT_SIZE
+      })
     );
   });
 
@@ -70,9 +130,16 @@ describe("appSettings", () => {
     const settings = readAppSettings(makeStorage());
 
     settings.fullscreenLyricsFontSize = 48;
+    settings.desktopLyricsEnabled = true;
 
-    expect(DEFAULT_APP_SETTINGS).toEqual({ fullscreenLyricsFontSize: 36 });
-    expect(readAppSettings(makeStorage())).toEqual({ fullscreenLyricsFontSize: 36 });
+    expect(DEFAULT_APP_SETTINGS).toEqual({
+      fullscreenLyricsFontFamily: "",
+      fullscreenLyricsFontSize: 36,
+      desktopLyricsEnabled: false,
+      desktopLyricsFontFamily: "",
+      desktopLyricsFontSize: 28
+    });
+    expect(readAppSettings(makeStorage())).toEqual(DEFAULT_APP_SETTINGS);
   });
 });
 

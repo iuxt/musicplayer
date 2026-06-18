@@ -62,3 +62,13 @@ export interface TrashTrackFilesResult {
 export type UpdateTrackMetadataResult =
   | { ok: true; metadata: TrackMetadataFields }
   | { ok: false; error: string };
+
+export interface DesktopLyricsPayload {
+  trackTitle: string | null;
+  artist: string | null;
+  currentLine: string | null;
+  nextLine: string | null;
+  isLoading: boolean;
+  fontFamily: string;
+  fontSize: number;
+}
