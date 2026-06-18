@@ -14,15 +14,15 @@ interface PlaylistProps {
 
 export const Playlist = memo(function Playlist({ tracks, currentTrack, label, onSelectTrack, onClear, onRemoveTrack }: PlaylistProps) {
   return (
-    <section className="playlist-panel" aria-label="Playlist">
+    <section className="playlist-panel" aria-label="播放列表">
       <div className="playlist-heading">
         <div>
-          <p className="eyebrow">Queue</p>
-          <h2>Playlist</h2>
+          <p className="eyebrow">队列</p>
+          <h2>播放列表</h2>
         </div>
         <div className="playlist-heading-actions">
           {tracks.length > 0 ? (
-            <button aria-label="Clear playlist" className="playlist-icon-button" onClick={onClear} title="Clear playlist" type="button">
+            <button aria-label="清空播放列表" className="playlist-icon-button" onClick={onClear} title="清空播放列表" type="button">
               <Trash2 size={16} />
             </button>
           ) : null}
@@ -36,7 +36,7 @@ export const Playlist = memo(function Playlist({ tracks, currentTrack, label, on
         estimatedRowHeight={58}
         items={tracks}
         getKey={(track) => track.id}
-        emptyState={<p className="playlist-empty">Queue is empty</p>}
+        emptyState={<p className="playlist-empty">队列为空</p>}
         renderItem={(track, index) => {
           const rowNumber = String(index + 1).padStart(2, "0");
 
@@ -48,10 +48,10 @@ export const Playlist = memo(function Playlist({ tracks, currentTrack, label, on
                 <small>{track.artist}</small>
               </button>
               <button
-                aria-label={`Remove ${track.title} from playlist`}
+                aria-label={`从播放列表移除 ${track.title}`}
                 className="playlist-icon-button playlist-remove-button"
                 onClick={() => onRemoveTrack(track)}
-                title={`Remove ${track.title} from playlist`}
+                title={`从播放列表移除 ${track.title}`}
                 type="button"
               >
                 <X size={14} />

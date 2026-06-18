@@ -18,7 +18,7 @@ export function normalizeDarwinArch(arch = process.arch) {
 }
 
 export function getBuildPaths(projectRoot, arch = normalizeDarwinArch(), stagingDir = path.join(os.tmpdir(), "local-music-player-build")) {
-  const appName = "Local Music Player";
+  const appName = "本地音乐播放器";
   const projectReleaseDir = path.join(projectRoot, "release");
 
   return {
@@ -39,7 +39,7 @@ export function getInstallCommand(packagedAppPath, applicationsPath) {
 
 async function main() {
   if (process.platform !== "darwin") {
-    throw new Error("This script only builds and installs the macOS app on macOS.");
+    throw new Error("此脚本仅支持在 macOS 上构建并安装应用。");
   }
 
   const projectRoot = path.resolve(__dirname, "..");
@@ -78,7 +78,7 @@ async function main() {
     const install = getInstallCommand(paths.packagedAppPath, paths.applicationsPath);
     await run(install.command, install.args, projectRoot);
 
-    console.log(`Installed ${paths.applicationsPath}`);
+    console.log(`已安装 ${paths.applicationsPath}`);
   } finally {
     await rm(paths.stagingDir, { recursive: true, force: true });
   }

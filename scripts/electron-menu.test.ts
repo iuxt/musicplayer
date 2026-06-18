@@ -9,8 +9,8 @@ describe("Electron application menu", () => {
     const mainSource = await readFile(path.join(process.cwd(), "electron/main.ts"), "utf8");
 
     expect(mainSource).toContain("Menu");
-    expect(mainSource).toContain("Choose Folder");
-    expect(mainSource).toContain("Rescan Library");
+    expect(mainSource).toContain("选择文件夹");
+    expect(mainSource).toContain("重新扫描音乐库");
     expect(mainSource).toContain("library:menu-command");
     expect(mainSource).toContain("setApplicationMenu");
   });

@@ -19,7 +19,7 @@ export async function trashTrackLyrics(track: Track, trashFile: TrashFile): Prom
     await trashFile(track.lyricsPath);
     return { ok: true };
   } catch (error) {
-    return { ok: false, error: errorMessage(error, "Unable to move lyrics to trash.") };
+    return { ok: false, error: errorMessage(error, "无法将歌词移到废纸篓。") };
   }
 }
 
@@ -39,7 +39,7 @@ export async function trashTrackFiles(track: Track, trashFile: TrashFile): Promi
       await trashFile(candidate.filePath);
       trashed.push(candidate);
     } catch (error) {
-      failed.push({ ...candidate, error: errorMessage(error, "Unable to move file to trash.") });
+      failed.push({ ...candidate, error: errorMessage(error, "无法将文件移到废纸篓。") });
     }
   }
 
@@ -100,9 +100,9 @@ async function exists(filePath: string) {
 
 function summarizeTrashFailures(failed: Array<TrashFileEntry & { error: string }>, audioRemoved: boolean) {
   if (!audioRemoved && failed.some((entry) => entry.kind === "audio")) {
-    return "Unable to move the music file to trash.";
+    return "无法将音乐文件移到废纸篓。";
   }
-  return "The music file was removed, but some related files could not be moved to trash.";
+  return "音乐文件已移除，但部分关联文件无法移到废纸篓。";
 }
 
 function compareTrashCandidates(first: TrashFileEntry, second: TrashFileEntry) {

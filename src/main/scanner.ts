@@ -25,7 +25,7 @@ export async function scanMusicFolder(folderPath: string, options: ScanOptions =
     } catch (error) {
       warnings.push({
         filePath: currentFolder,
-        reason: error instanceof Error ? error.message : "Unable to read folder"
+        reason: error instanceof Error ? error.message : "无法读取文件夹"
       });
       report(currentFolder);
       return;
@@ -106,8 +106,8 @@ async function buildTrack(
 ): Promise<Track> {
   const fallbackTitle = path.basename(filePath, path.extname(filePath));
   let title = fallbackTitle;
-  let artist = "Unknown Artist";
-  let album = "Unknown Album";
+  let artist = "未知歌手";
+  let album = "未知专辑";
   let duration = 0;
   let trackNumber: number | null = null;
   let artworkId: string | null = null;

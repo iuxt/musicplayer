@@ -27,7 +27,7 @@ describe("PlayerBar", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Open fullscreen lyrics" }));
+    fireEvent.click(screen.getByRole("button", { name: "打开全屏歌词" }));
 
     expect(onOpenNowPlaying).toHaveBeenCalledOnce();
   });
@@ -55,10 +55,10 @@ describe("PlayerBar", () => {
       />
     );
 
-    expect(screen.queryByRole("button", { name: "Shuffle" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Repeat" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "随机播放" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "循环播放" })).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Playback mode: shuffle" }));
+    fireEvent.click(screen.getByRole("button", { name: "播放模式：随机播放" }));
 
     expect(onPlaybackMode).toHaveBeenCalledOnce();
   });

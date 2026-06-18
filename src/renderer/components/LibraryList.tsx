@@ -1,5 +1,5 @@
-import { ChevronLeft, Search } from "lucide-react";
-import { memo, useMemo } from "react";
+import { ChevronLeft, Disc3, Search } from "lucide-react";
+import { memo, useEffect, useMemo, useState } from "react";
 import type { Track } from "../../shared/types";
 import { buildFolderBrowserRows } from "../folderBrowser";
 import type { LibraryCategory } from "../libraryCategories";
@@ -19,10 +19,10 @@ interface LibraryListProps {
 }
 
 const headings: Record<LibraryCategory, string> = {
-  songs: "Songs",
-  albums: "Albums",
-  artists: "Artists",
-  folders: "Folders"
+  songs: "歌曲",
+  albums: "专辑",
+  artists: "歌手",
+  folders: "文件夹"
 };
 
 export const LibraryList = memo(function LibraryList({
@@ -49,10 +49,10 @@ export const LibraryList = memo(function LibraryList({
   const heading = isFolderDetail ? selectedFolderPath : headings[category];
 
   return (
-    <section className="library-panel" aria-label="Library browser">
+    <section className="library-panel" aria-label="音乐库浏览器">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">Library</p>
+          <p className="eyebrow">音乐库</p>
           <h2>{heading}</h2>
         </div>
         <label className="search-box">
@@ -60,7 +60,7 @@ export const LibraryList = memo(function LibraryList({
           <input
             value={search}
             onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Search songs, artists, albums"
+            placeholder="搜索歌曲、歌手、专辑"
           />
         </label>
       </div>
@@ -68,7 +68,7 @@ export const LibraryList = memo(function LibraryList({
       {isFolderDetail ? (
         <button className="back-button" onClick={onBackToFolders} type="button">
           <ChevronLeft size={16} />
-          Folders
+          文件夹
         </button>
       ) : null}
 
@@ -102,8 +102,8 @@ export const LibraryList = memo(function LibraryList({
                   <strong>{row.label}</strong>
                   <small>{row.detail}</small>
                 </span>
-                <span className="track-album">{row.tracks.length} songs</span>
-                <span className="track-duration">Open</span>
+                <span className="track-album">{row.tracks.length} 首歌曲</span>
+                <span className="track-duration">打开</span>
               </button>
             ) : (
               <TrackRow
@@ -135,8 +135,8 @@ export const LibraryList = memo(function LibraryList({
                 <strong>{group.label}</strong>
                 <small>{group.detail}</small>
               </span>
-              <span className="track-album">{group.tracks.length} songs</span>
-              <span className="track-duration">Play</span>
+              <span className="track-album">{group.tracks.length} 首歌曲</span>
+              <span className="track-duration">播放</span>
             </button>
           )}
         />
@@ -158,9 +158,11 @@ function TrackRow({
   onSelectTrack: (track: Track, queueTracks?: Track[]) => void;
   onTrackContextMenu: (track: Track, position: { x: number; y: number }) => void;
 }) {
+  const artworkUrl = useTrackArtworkUrl(track.artworkPath);
+
   return (
     <button
-      className={`track-row ${currentTrack?.id === track.id ? "active" : ""}`}
+      className={`track-row song-row ${currentTrack?.id === track.id ? "active" : ""}`}
       onClick={() => onSelectTrack(track)}
       onContextMenu={(event) => {
         event.preventDefault();
@@ -169,6 +171,9 @@ function TrackRow({
       type="button"
     >
       <span className="track-index">{String(index + 1).padStart(2, "0")}</span>
+      <span className="track-artwork">
+        {artworkUrl ? <img src={artworkUrl} alt={`${track.album} 封面`} /> : <Disc3 size={18} aria-hidden="true" />}
+      </span>
       <span className="track-title">
         <strong>{track.title}</strong>
         <small>{track.artist}</small>
@@ -177,6 +182,40 @@ function TrackRow({
       <span className="track-duration">{formatDuration(track.duration)}</span>
     </button>
   );
+}
+
+function useTrackArtworkUrl(artworkPath: string | null) {
+  const [artworkUrl, setArtworkUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setArtworkUrl(null);
+
+    if (!artworkPath) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    void window.musicApi
+      .getArtworkUrl(artworkPath)
+      .then((url) => {
+        if (!cancelled) {
+          setArtworkUrl(url);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setArtworkUrl(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [artworkPath]);
+
+  return artworkUrl;
 }
 
 function buildGroups(tracks: Track[], category: Exclude<LibraryCategory, "songs" | "folders">) {

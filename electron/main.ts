@@ -28,15 +28,15 @@ function createApplicationMenu() {
         ]
       : []),
     {
-      label: "Library",
+      label: "音乐库",
       submenu: [
         {
-          label: "Choose Folder",
+          label: "选择文件夹",
           accelerator: "CmdOrCtrl+O",
           click: () => sendMenuCommand("choose-folder")
         },
         {
-          label: "Rescan Library",
+          label: "重新扫描音乐库",
           accelerator: "CmdOrCtrl+R",
           click: () => sendMenuCommand("rescan-library")
         }
@@ -54,7 +54,7 @@ function registerIpc() {
   ipcMain.handle("library:choose-folder", async (event) => {
     const parentWindow = BrowserWindow.fromWebContents(event.sender);
     const options: OpenDialogOptions = {
-      title: "Choose Music Folder",
+      title: "选择音乐文件夹",
       properties: ["openDirectory"]
     };
     const result = parentWindow

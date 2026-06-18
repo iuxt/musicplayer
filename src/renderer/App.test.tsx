@@ -106,7 +106,7 @@ describe("App", () => {
     await waitFor(() => expect(screen.getByText("0:42")).toBeTruthy());
     expect(HTMLMediaElement.prototype.play).not.toHaveBeenCalled();
 
-    const playlist = screen.getByRole("region", { name: "Playlist" });
+    const playlist = screen.getByRole("region", { name: "播放列表" });
     expect(within(playlist).getByText("Second Song")).toBeTruthy();
     expect(within(playlist).getByText("Third Song")).toBeTruthy();
     expect(within(playlist).queryByText("Wave Song")).toBeNull();
@@ -168,7 +168,7 @@ describe("App", () => {
 
     await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenLastCalledWith(folderTrack.filePath));
     expect(within(screen.getByRole("contentinfo")).getByText("Artist Folder Song")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "暂停" })).toBeTruthy();
   });
 
   it("advances when playback reaches the track duration without an ended event", async () => {
@@ -196,7 +196,7 @@ describe("App", () => {
 
     await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenLastCalledWith(folderTrack.filePath));
     expect(within(screen.getByRole("contentinfo")).getByText("Artist Folder Song")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Pause" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "暂停" })).toBeTruthy();
   });
 
   it("does not skip an extra track when end-of-track signals fire together", async () => {
@@ -255,14 +255,14 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
-    expect(screen.queryByText("Now Playing")).toBeNull();
+    expect(screen.queryByText("正在播放")).toBeNull();
   });
 
   it("remembers a newly chosen folder", async () => {
     window.musicApi.chooseMusicFolder = vi.fn(async () => scanResult);
 
     render(<App />);
-    fireEvent.click(screen.getAllByText("Choose Folder")[0]);
+    fireEvent.click(screen.getAllByText("选择文件夹")[0]);
 
     await waitFor(() => expect(localStorage.getItem("local-music-player:last-folder")).toBe(rememberedFolder));
   });
@@ -292,23 +292,23 @@ describe("App", () => {
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
     expect(screen.queryByText("Rescan")).toBeNull();
-    expect(screen.getByRole("button", { name: "Songs" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Albums" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Artists" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Folders" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "歌曲" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "专辑" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "歌手" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "文件夹" })).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Albums" }));
-    expect(await screen.findByRole("heading", { name: "Albums" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "专辑" }));
+    expect(await screen.findByRole("heading", { name: "专辑" })).toBeTruthy();
     expect(screen.getByText("Wave Album")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Artists" }));
-    expect(await screen.findByRole("heading", { name: "Artists" })).toBeTruthy();
-    expect(within(screen.getByRole("region", { name: "Library browser" })).getByText("Second Artist")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "歌手" }));
+    expect(await screen.findByRole("heading", { name: "歌手" })).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "音乐库浏览器" })).getByText("Second Artist")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "Folders" }));
-    expect(await screen.findByRole("heading", { name: "Folders" })).toBeTruthy();
-    const library = screen.getByRole("region", { name: "Library browser" });
-    expect(within(library).getByRole("button", { name: /Second Artist.*3 songs.*Open/ })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "文件夹" }));
+    expect(await screen.findByRole("heading", { name: "文件夹" })).toBeTruthy();
+    const library = screen.getByRole("region", { name: "音乐库浏览器" });
+    expect(within(library).getByRole("button", { name: /Second Artist.*3 首歌曲.*打开/ })).toBeTruthy();
     expect(within(library).queryByText("Second Artist/Second Album")).toBeNull();
   });
 
@@ -319,20 +319,20 @@ describe("App", () => {
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
 
-    fireEvent.click(screen.getByRole("button", { name: "Folders" }));
-    let library = screen.getByRole("region", { name: "Library browser" });
-    fireEvent.click(within(library).getByRole("button", { name: /Second Artist.*3 songs.*Open/ }));
+    fireEvent.click(screen.getByRole("button", { name: "文件夹" }));
+    let library = screen.getByRole("region", { name: "音乐库浏览器" });
+    fireEvent.click(within(library).getByRole("button", { name: /Second Artist.*3 首歌曲.*打开/ }));
 
     expect(await screen.findByRole("heading", { name: "Second Artist" })).toBeTruthy();
-    library = screen.getByRole("region", { name: "Library browser" });
-    expect(within(library).getByRole("button", { name: /Second Album.*2 songs.*Open/ })).toBeTruthy();
+    library = screen.getByRole("region", { name: "音乐库浏览器" });
+    expect(within(library).getByRole("button", { name: /Second Album.*2 首歌曲.*打开/ })).toBeTruthy();
     expect(within(library).getByText("Artist Folder Song")).toBeTruthy();
     expect(within(library).queryByText("Second Song")).toBeNull();
 
-    fireEvent.click(within(library).getByRole("button", { name: /Second Album.*2 songs.*Open/ }));
+    fireEvent.click(within(library).getByRole("button", { name: /Second Album.*2 首歌曲.*打开/ }));
 
     expect(await screen.findByRole("heading", { name: "Second Artist/Second Album" })).toBeTruthy();
-    library = screen.getByRole("region", { name: "Library browser" });
+    library = screen.getByRole("region", { name: "音乐库浏览器" });
     expect(within(library).queryByText("Wave Song")).toBeNull();
     expect(within(library).queryByText("Artist Folder Song")).toBeNull();
     expect(within(library).getByText("Second Song")).toBeTruthy();
@@ -343,7 +343,7 @@ describe("App", () => {
     await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenCalledWith(secondTrack.filePath));
     expect(HTMLMediaElement.prototype.play).toHaveBeenCalled();
 
-    const playlist = screen.getByRole("region", { name: "Playlist" });
+    const playlist = screen.getByRole("region", { name: "播放列表" });
     expect(within(playlist).getByText("Second Song")).toBeTruthy();
     expect(within(playlist).getByText("Third Song")).toBeTruthy();
     expect(within(playlist).queryByText("Wave Song")).toBeNull();
@@ -355,14 +355,14 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
-    const playlist = screen.getByRole("region", { name: "Playlist" });
+    const playlist = screen.getByRole("region", { name: "播放列表" });
 
     await act(async () => {
-      fireEvent.click(within(playlist).getByRole("button", { name: "Remove Wave Song from playlist" }));
+      fireEvent.click(within(playlist).getByRole("button", { name: "从播放列表移除 Wave Song" }));
     });
 
     expect(within(playlist).queryByText("Wave Song")).toBeNull();
-    expect(within(screen.getByRole("region", { name: "Library browser" })).getByText("Wave Song")).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "音乐库浏览器" })).getByText("Wave Song")).toBeTruthy();
   });
 
   it("clears the playlist and keeps the library tracks visible", async () => {
@@ -371,16 +371,16 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
-    const playlist = screen.getByRole("region", { name: "Playlist" });
+    const playlist = screen.getByRole("region", { name: "播放列表" });
 
     await act(async () => {
-      fireEvent.click(within(playlist).getByRole("button", { name: "Clear playlist" }));
+      fireEvent.click(within(playlist).getByRole("button", { name: "清空播放列表" }));
     });
 
-    expect(within(playlist).getByText("Queue is empty")).toBeTruthy();
+    expect(within(playlist).getByText("队列为空")).toBeTruthy();
     expect(within(playlist).queryByText("Wave Song")).toBeNull();
     expect(within(playlist).queryByText("Second Song")).toBeNull();
-    expect(within(screen.getByRole("region", { name: "Library browser" })).getByText("Wave Song")).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "音乐库浏览器" })).getByText("Wave Song")).toBeTruthy();
   });
 
   it("opens the track context menu and disables lyric deletion when no lyrics exist", async () => {
@@ -456,8 +456,8 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "删除当前音乐文件" }));
 
     await waitFor(() => expect(window.musicApi.trashTrackFiles).toHaveBeenCalledWith(track));
-    expect(within(screen.getByRole("region", { name: "Library browser" })).queryByText("Wave Song")).toBeNull();
-    expect(within(screen.getByRole("region", { name: "Playlist" })).queryByText("Wave Song")).toBeNull();
+    expect(within(screen.getByRole("region", { name: "音乐库浏览器" })).queryByText("Wave Song")).toBeNull();
+    expect(within(screen.getByRole("region", { name: "播放列表" })).queryByText("Wave Song")).toBeNull();
 
     confirmSpy.mockRestore();
   });
@@ -468,14 +468,14 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
-    fireEvent.click(screen.getByRole("button", { name: "Artists" }));
+    fireEvent.click(screen.getByRole("button", { name: "歌手" }));
 
-    const library = screen.getByRole("region", { name: "Library browser" });
+    const library = screen.getByRole("region", { name: "音乐库浏览器" });
     await act(async () => {
-      fireEvent.click(within(library).getByRole("button", { name: /Second Artist.*3 songs.*Play/ }));
+      fireEvent.click(within(library).getByRole("button", { name: /Second Artist.*3 首歌曲.*播放/ }));
     });
 
-    const playlist = screen.getByRole("region", { name: "Playlist" });
+    const playlist = screen.getByRole("region", { name: "播放列表" });
     expect(within(playlist).getByText("Artist Folder Song")).toBeTruthy();
     expect(within(playlist).getByText("Second Song")).toBeTruthy();
     expect(within(playlist).getByText("Third Song")).toBeTruthy();
@@ -489,17 +489,31 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
-    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "设置" }));
 
-    expect(screen.getByRole("region", { name: "Settings" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "设置" })).toBeTruthy();
     expect(screen.getByRole("contentinfo")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Settings" }).className).toContain("active");
-    expect(screen.getByRole("button", { name: "Songs" }).className).not.toContain("active");
+    expect(screen.getByRole("button", { name: "设置" }).className).toContain("active");
+    expect(screen.getByRole("button", { name: "歌曲" }).className).not.toContain("active");
 
-    fireEvent.click(screen.getByRole("button", { name: "Albums" }));
+    fireEvent.click(screen.getByRole("button", { name: "专辑" }));
 
-    expect(await screen.findByRole("heading", { name: "Albums" })).toBeTruthy();
-    expect(screen.queryByRole("region", { name: "Settings" })).toBeNull();
+    expect(await screen.findByRole("heading", { name: "专辑" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "设置" })).toBeNull();
+  });
+
+  it("shows the selected folder path only on the settings page", async () => {
+    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    expect(screen.queryByText(rememberedFolder)).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "设置" }));
+
+    expect(screen.getByText(rememberedFolder)).toBeTruthy();
   });
 
   it("clears only the library cache from settings", async () => {
@@ -519,13 +533,13 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
-    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
-    fireEvent.click(screen.getByRole("button", { name: "Clear Library Cache" }));
+    fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    fireEvent.click(screen.getByRole("button", { name: "清除音乐库缓存" }));
 
     expect(localStorage.getItem(libraryCacheKey)).toBeNull();
     expect(localStorage.getItem("local-music-player:last-folder")).toBe(rememberedFolder);
     expect(localStorage.getItem(playbackStateKey)).not.toBeNull();
-    expect(screen.getByText("Library cache cleared.")).toBeTruthy();
+    expect(screen.getByText("音乐库缓存已清除。")).toBeTruthy();
   });
 
   it("persists fullscreen lyrics font size and applies it to fullscreen lyrics", async () => {
@@ -537,19 +551,19 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
-    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
-    fireEvent.change(screen.getByLabelText("Fullscreen lyrics font size"), { target: { value: "48" } });
+    fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    fireEvent.change(screen.getByLabelText("全屏歌词字号"), { target: { value: "48" } });
 
     expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toEqual({ fullscreenLyricsFontSize: 48 });
 
-    fireEvent.click(screen.getByRole("button", { name: "Songs" }));
+    fireEvent.click(screen.getByRole("button", { name: "歌曲" }));
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
     });
-    fireEvent.click(screen.getByRole("button", { name: "Open fullscreen lyrics" }));
+    fireEvent.click(screen.getByRole("button", { name: "打开全屏歌词" }));
 
     expect(await screen.findByText("Preview lyric")).toBeTruthy();
-    const fullscreenLyrics = screen.getByRole("region", { name: "Fullscreen lyrics" });
+    const fullscreenLyrics = screen.getByRole("region", { name: "全屏歌词" });
     expect((fullscreenLyrics as HTMLElement).style.getPropertyValue("--fullscreen-lyrics-font-size")).toBe("48px");
   });
 
@@ -557,9 +571,9 @@ describe("App", () => {
     localStorage.setItem(appSettingsKey, JSON.stringify({ fullscreenLyricsFontSize: 72 }));
 
     render(<App />);
-    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "设置" }));
 
-    expect((screen.getByLabelText("Fullscreen lyrics font size") as HTMLInputElement).value).toBe("36");
+    expect((screen.getByLabelText("全屏歌词字号") as HTMLInputElement).value).toBe("36");
   });
 });
 

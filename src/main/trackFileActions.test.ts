@@ -62,7 +62,7 @@ describe("track file actions", () => {
       audioRemoved: false,
       trashed: [],
       failed: [{ filePath: audioPath, kind: "audio", error: "trash rejected" }],
-      error: "Unable to move the music file to trash."
+      error: "无法将音乐文件移到废纸篓。"
     });
   });
 });

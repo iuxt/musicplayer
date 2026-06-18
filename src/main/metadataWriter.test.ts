@@ -24,10 +24,10 @@ describe("metadata writer", () => {
   it("rejects invalid metadata", () => {
     expect(() =>
       normalizeTrackMetadataUpdate({ title: "", artist: "Artist", album: "Album", trackNumber: null })
-    ).toThrow("Title is required.");
+    ).toThrow("标题不能为空");
     expect(() =>
       normalizeTrackMetadataUpdate({ title: "Title", artist: "Artist", album: "Album", trackNumber: 0 })
-    ).toThrow("Track number must be a positive integer.");
+    ).toThrow("曲号必须是正整数");
   });
 
   it("builds ffmpeg stream-copy metadata args", () => {

@@ -55,9 +55,37 @@ describe("LibraryList", () => {
 
     expect(onTrackContextMenu).toHaveBeenCalledWith(tracks[0], { x: 24, y: 48 });
   });
+
+  it("shows track artwork before the song title when artwork exists", async () => {
+    const track = makeTrack(1, { artworkPath: "/music/cover.jpg" });
+    const getArtworkUrl = vi.fn(async (filePath: string | null) => (filePath ? `file://${filePath}` : null));
+    Object.defineProperty(window, "musicApi", {
+      configurable: true,
+      value: { getArtworkUrl }
+    });
+
+    render(
+      <LibraryList
+        category="songs"
+        tracks={[track]}
+        currentTrack={null}
+        search=""
+        selectedFolderPath={null}
+        onSearchChange={() => undefined}
+        onSelectTrack={() => undefined}
+        onOpenFolder={() => undefined}
+        onBackToFolders={() => undefined}
+        onTrackContextMenu={() => undefined}
+      />
+    );
+
+    const artwork = await screen.findByRole("img", { name: "Album 封面" });
+    expect(artwork.getAttribute("src")).toBe("file:///music/cover.jpg");
+    expect(getArtworkUrl).toHaveBeenCalledWith("/music/cover.jpg");
+  });
 });
 
-function makeTrack(index: number): Track {
+function makeTrack(index: number, overrides: Partial<Track> = {}): Track {
   return {
     id: `track-${index}`,
     filePath: `/music/Track ${index}.flac`,
@@ -71,6 +99,7 @@ function makeTrack(index: number): Track {
     artworkPath: null,
     lyricsPath: null,
     hasLyrics: false,
-    folderPath: "Artist/Album"
+    folderPath: "Artist/Album",
+    ...overrides
   };
 }

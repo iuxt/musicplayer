@@ -115,7 +115,6 @@ button:disabled {
 }
 
 .brand span,
-.folder-path,
 .track-title small,
 .scan-strip span {
   color: #73737a;
@@ -146,11 +145,6 @@ button:disabled {
 .nav-item.active,
 .secondary-button:hover:not(:disabled) {
   background: rgba(0, 0, 0, 0.06);
-}
-
-.folder-path {
-  overflow-wrap: anywhere;
-  line-height: 1.4;
 }
 
 .main-stage {
@@ -465,6 +459,10 @@ button:disabled {
   text-align: left;
 }
 
+.song-row {
+  grid-template-columns: 44px 42px minmax(0, 1.4fr) minmax(120px, 0.8fr) 54px;
+}
+
 .track-row:hover,
 .track-row.active {
   background: rgba(250, 35, 59, 0.09);
@@ -475,6 +473,25 @@ button:disabled {
 .track-album {
   color: #7c7c82;
   font-size: 13px;
+}
+
+.track-artwork {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.92);
+  background: linear-gradient(145deg, #fb2440, #ff8a54 42%, #4f6df5);
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+}
+
+.track-artwork img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
 .track-title {

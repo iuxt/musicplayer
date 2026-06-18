@@ -49,15 +49,15 @@ export function FullscreenLyrics({
   }, [onClose]);
 
   return (
-    <section className="fullscreen-lyrics" aria-label="Fullscreen lyrics" style={lyricsStyle}>
-      <button className="fullscreen-close" type="button" aria-label="Close fullscreen lyrics" onClick={onClose}>
+    <section className="fullscreen-lyrics" aria-label="全屏歌词" style={lyricsStyle}>
+      <button className="fullscreen-close" type="button" aria-label="关闭全屏歌词" onClick={onClose}>
         <X size={24} />
       </button>
 
       <div className="fullscreen-artwork-column">
         <div className="fullscreen-cover-frame">
           {artworkUrl ? (
-            <img className="cover-image" src={artworkUrl} alt={track ? `${track.album} cover` : "Album cover"} />
+            <img className="cover-image" src={artworkUrl} alt={track ? `${track.album} 封面` : "专辑封面"} />
           ) : (
             <div className="cover-art">
               <Disc3 size={112} />
@@ -65,15 +65,15 @@ export function FullscreenLyrics({
           )}
         </div>
         <div className="fullscreen-track-copy">
-          <p className="eyebrow">Now Playing</p>
-          <h2>{track?.title ?? "Nothing playing"}</h2>
-          <p>{track ? `${track.artist} - ${track.album}` : "Choose a track to start."}</p>
+          <p className="eyebrow">正在播放</p>
+          <h2>{track?.title ?? "暂无播放"}</h2>
+          <p>{track ? `${track.artist} - ${track.album}` : "选择歌曲开始播放。"}</p>
         </div>
       </div>
 
       <div className="fullscreen-lyrics-column" aria-live="polite">
         {isLyricsLoading ? (
-          <p className="fullscreen-lyrics-empty">Loading lyrics...</p>
+          <p className="fullscreen-lyrics-empty">正在加载歌词...</p>
         ) : lines.length > 0 ? (
           <div className="fullscreen-lyrics-list">
             {lines.map((line, index) => (
@@ -87,7 +87,7 @@ export function FullscreenLyrics({
             ))}
           </div>
         ) : (
-          <p className="fullscreen-lyrics-empty">{track ? "No lyrics found." : "Lyrics will appear here."}</p>
+          <p className="fullscreen-lyrics-empty">{track ? "未找到歌词。" : "歌词会显示在这里。"}</p>
         )}
       </div>
     </section>

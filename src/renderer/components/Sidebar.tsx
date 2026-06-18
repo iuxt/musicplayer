@@ -2,7 +2,6 @@ import { Disc3, Folder, ListMusic, Mic2, Music2, Settings } from "lucide-react";
 import { libraryCategories, type LibraryCategory } from "../libraryCategories";
 
 interface SidebarProps {
-  folderPath: string | null;
   trackCount: number;
   activeCategory: LibraryCategory;
   activeView: "library" | "settings";
@@ -18,7 +17,6 @@ const categoryIcons = {
 };
 
 export function Sidebar({
-  folderPath,
   trackCount,
   activeCategory,
   activeView,
@@ -32,12 +30,12 @@ export function Sidebar({
           <Music2 size={20} />
         </div>
         <div>
-          <strong>Local Music</strong>
-          <span>{trackCount} tracks</span>
+          <strong>本地音乐</strong>
+          <span>{trackCount} 首歌曲</span>
         </div>
       </div>
 
-      <nav className="nav-list" aria-label="Library">
+      <nav className="nav-list" aria-label="音乐库">
         {libraryCategories.map((category) => {
           const Icon = categoryIcons[category.id];
 
@@ -58,10 +56,8 @@ export function Sidebar({
       <div className="sidebar-footer">
         <button className={`nav-item ${activeView === "settings" ? "active" : ""}`} onClick={onSettingsOpen} type="button">
           <Settings size={18} />
-          Settings
+          设置
         </button>
-
-        {folderPath ? <p className="folder-path">{folderPath}</p> : null}
       </div>
     </aside>
   );

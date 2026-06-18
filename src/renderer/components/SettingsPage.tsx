@@ -28,35 +28,35 @@ export function SettingsPage({
   onFullscreenLyricsFontSizeChange
 }: SettingsPageProps) {
   return (
-    <section className="settings-page" aria-label="Settings">
+    <section className="settings-page" aria-label="设置">
       <div className="settings-header">
-        <p className="eyebrow">Settings</p>
-        <h2>Settings</h2>
+        <p className="eyebrow">设置</p>
+        <h2>设置</h2>
       </div>
 
       <section className="settings-section" aria-labelledby="library-settings-heading">
         <div className="settings-section-heading">
-          <h3 id="library-settings-heading">Library</h3>
-          <p>Manage the local folder and cached library scan.</p>
+          <h3 id="library-settings-heading">音乐库</h3>
+          <p>管理本地文件夹和音乐库扫描缓存。</p>
         </div>
         <div className="setting-row">
           <div>
-            <strong>Music folder</strong>
-            <p className="settings-path">{folderPath ?? "No music folder selected."}</p>
+            <strong>音乐文件夹</strong>
+            <p className="settings-path">{folderPath ?? "尚未选择音乐文件夹。"}</p>
           </div>
         </div>
         <div className="settings-actions">
           <button className="primary-button" onClick={onChooseFolder} type="button">
             <FolderOpen size={16} />
-            Choose Folder
+            选择文件夹
           </button>
           <button className="secondary-button" disabled={!folderPath || isScanning} onClick={onRescanLibrary} type="button">
             <RefreshCw size={16} />
-            Rescan Library
+            重新扫描音乐库
           </button>
           <button className="secondary-button" onClick={onClearLibraryCache} type="button">
             <Trash2 size={16} />
-            Clear Library Cache
+            清除音乐库缓存
           </button>
         </div>
         {cacheStatus ? <p className="settings-status" role="status">{cacheStatus}</p> : null}
@@ -65,21 +65,21 @@ export function SettingsPage({
 
       <section className="settings-section" aria-labelledby="playback-settings-heading">
         <div className="settings-section-heading">
-          <h3 id="playback-settings-heading">Playback</h3>
-          <p>Playback preferences will appear here.</p>
+          <h3 id="playback-settings-heading">播放</h3>
+          <p>播放偏好设置会显示在这里。</p>
         </div>
       </section>
 
       <section className="settings-section" aria-labelledby="lyrics-settings-heading">
         <div className="settings-section-heading">
-          <h3 id="lyrics-settings-heading">Lyrics</h3>
-          <p>Adjust fullscreen lyrics readability without changing the rest of the app.</p>
+          <h3 id="lyrics-settings-heading">歌词</h3>
+          <p>调整全屏歌词的可读性，不影响应用其他部分。</p>
         </div>
         <label className="lyrics-size-control">
-          <span>Fullscreen lyrics font size</span>
+          <span>全屏歌词字号</span>
           <strong>{fullscreenLyricsFontSize}px</strong>
           <input
-            aria-label="Fullscreen lyrics font size"
+            aria-label="全屏歌词字号"
             max={MAX_FULLSCREEN_LYRICS_FONT_SIZE}
             min={MIN_FULLSCREEN_LYRICS_FONT_SIZE}
             onChange={(event) => onFullscreenLyricsFontSizeChange(Number(event.target.value))}
@@ -89,7 +89,7 @@ export function SettingsPage({
           />
         </label>
         <p className="lyrics-preview" style={{ fontSize: `${fullscreenLyricsFontSize}px` }}>
-          Lyrics preview line
+          歌词预览行
         </p>
       </section>
     </section>

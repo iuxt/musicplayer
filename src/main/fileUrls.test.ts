@@ -13,7 +13,7 @@ describe("toMediaFileUrl", () => {
   });
 
   it("rejects empty paths", () => {
-    expect(() => toMediaFileUrl("")).toThrow("filePath is required");
+    expect(() => toMediaFileUrl("")).toThrow("缺少文件路径");
   });
 
   it("returns null for missing optional file paths", () => {

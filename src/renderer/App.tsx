@@ -19,6 +19,8 @@ const LAST_FOLDER_STORAGE_KEY = "local-music-player:last-folder";
 const LIBRARY_CACHE_STORAGE_KEY = "local-music-player:library-cache";
 const PLAYBACK_STATE_STORAGE_KEY = "local-music-player:playback-state";
 const PLAYBACK_PROGRESS_SAVE_INTERVAL_MS = 5000;
+const DEFAULT_PLAYLIST_LABEL = "音乐库";
+const DEFAULT_FOLDER_PLAYLIST_LABEL = "文件夹";
 
 type PlaybackState = {
   trackId: string;
@@ -45,7 +47,7 @@ export function App() {
   const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(null);
   const [playQueue, setPlayQueue] = useState<Track[]>([]);
   const [isPlayQueueExplicit, setIsPlayQueueExplicit] = useState(false);
-  const [playlistLabel, setPlaylistLabel] = useState("Library");
+  const [playlistLabel, setPlaylistLabel] = useState(DEFAULT_PLAYLIST_LABEL);
   const [appError, setAppError] = useState<string | null>(null);
   const [artworkUrl, setArtworkUrl] = useState<string | null>(null);
   const [lyrics, setLyrics] = useState<string | null>(null);
@@ -78,7 +80,7 @@ export function App() {
     setWarnings(result.warnings);
     setPlayQueue(result.tracks);
     setIsPlayQueueExplicit(false);
-    setPlaylistLabel("Library");
+    setPlaylistLabel(DEFAULT_PLAYLIST_LABEL);
     setSelectedFolderPath(null);
     localStorage.setItem(LAST_FOLDER_STORAGE_KEY, result.folderPath);
 
@@ -95,7 +97,7 @@ export function App() {
 
     setPlayQueue(restoredQueue.length > 0 ? restoredQueue : result.tracks);
     setIsPlayQueueExplicit(playbackState.isPlayQueueExplicit && restoredQueue.length > 0);
-    setPlaylistLabel(playbackState.playlistLabel || "Library");
+    setPlaylistLabel(localizePlaylistLabel(playbackState.playlistLabel));
     setPendingPlaybackRestore(playbackState);
   }, []);
 
@@ -205,7 +207,7 @@ export function App() {
       loadLibraryResult(result);
       saveLibraryCache(result);
     } catch (error) {
-      setAppError(error instanceof Error ? error.message : "Unable to scan the folder.");
+      setAppError(error instanceof Error ? error.message : "无法扫描文件夹。");
     } finally {
       setIsScanning(false);
     }
@@ -225,7 +227,7 @@ export function App() {
       loadLibraryResult(result);
       saveLibraryCache(result);
     } catch (error) {
-      setAppError(error instanceof Error ? error.message : "Unable to rescan the folder.");
+      setAppError(error instanceof Error ? error.message : "无法重新扫描文件夹。");
     } finally {
       setIsScanning(false);
     }
@@ -275,7 +277,7 @@ export function App() {
       })
       .catch((error) => {
         if (!cancelled) {
-          setAppError(error instanceof Error ? error.message : "Unable to reopen the last music folder.");
+          setAppError(error instanceof Error ? error.message : "无法重新打开上次的音乐文件夹。");
         }
       })
       .finally(() => {
@@ -349,9 +351,9 @@ export function App() {
     setCacheError(null);
     try {
       localStorage.removeItem(LIBRARY_CACHE_STORAGE_KEY);
-      setCacheStatus("Library cache cleared.");
+      setCacheStatus("音乐库缓存已清除。");
     } catch {
-      setCacheError("Unable to clear the library cache.");
+      setCacheError("无法清除音乐库缓存。");
     }
   }, []);
 
@@ -361,7 +363,7 @@ export function App() {
     try {
       writeAppSettings(nextSettings);
     } catch {
-      setAppError("Unable to save settings.");
+      setAppError("无法保存设置。");
     }
   }, []);
 
@@ -379,7 +381,7 @@ export function App() {
         queueTracks ?? (activeCategory === "folders" ? getTracksAtFolderLevel(filteredTracks, selectedFolderPath) : filteredTracks);
       setPlayQueue(nextQueue);
       setIsPlayQueueExplicit(true);
-      setPlaylistLabel(activeCategory === "folders" ? selectedFolderPath ?? "Folders" : "Library");
+      setPlaylistLabel(activeCategory === "folders" ? selectedFolderPath ?? DEFAULT_FOLDER_PLAYLIST_LABEL : DEFAULT_PLAYLIST_LABEL);
       await player.playTrack(track);
     },
     [activeCategory, filteredTracks, player.playTrack, selectedFolderPath]
@@ -487,7 +489,7 @@ export function App() {
         setAppError(result.error);
       }
     } catch (error) {
-      setAppError(error instanceof Error ? error.message : "Unable to open the file location.");
+      setAppError(error instanceof Error ? error.message : "无法打开文件位置。");
     } finally {
       setPendingMediaAction(false);
       setTrackMenu(null);
@@ -519,7 +521,7 @@ export function App() {
         });
         setEditingTrack(null);
       } catch (error) {
-        setMetadataError(error instanceof Error ? error.message : "Unable to update music information.");
+        setMetadataError(error instanceof Error ? error.message : "无法更新音乐信息。");
       } finally {
         setPendingMediaAction(false);
       }
@@ -539,7 +541,7 @@ export function App() {
         }
         updateTrackLyricsState(track.id);
       } catch (error) {
-        setAppError(error instanceof Error ? error.message : "Unable to move lyrics to trash.");
+        setAppError(error instanceof Error ? error.message : "无法将歌词移到废纸篓。");
       } finally {
         setPendingMediaAction(false);
         setTrackMenu(null);
@@ -567,7 +569,7 @@ export function App() {
           setAppError(result.error);
         }
       } catch (error) {
-        setAppError(error instanceof Error ? error.message : "Unable to move the music file to trash.");
+        setAppError(error instanceof Error ? error.message : "无法将音乐文件移到废纸篓。");
       } finally {
         setPendingMediaAction(false);
         setTrackMenu(null);
@@ -580,7 +582,6 @@ export function App() {
     <div className="app-frame">
       <div className="window-drag-region" aria-hidden="true" />
       <Sidebar
-        folderPath={folderPath}
         trackCount={tracks.length}
         activeCategory={activeCategory}
         activeView={activeView}
@@ -591,7 +592,7 @@ export function App() {
       <main className="main-stage">
         {isScanning ? <ScanningState progress={scanProgress} /> : null}
         {appError ? <div className="app-error">{appError}</div> : null}
-        {warnings.length > 0 ? <div className="warning-strip">{warnings.length} files skipped while scanning.</div> : null}
+        {warnings.length > 0 ? <div className="warning-strip">扫描时跳过了 {warnings.length} 个文件。</div> : null}
 
         {activeView === "settings" ? (
           <SettingsPage
@@ -741,6 +742,16 @@ function readPlaybackState(tracks: Track[]): PlaybackState | null {
   } catch {
     return null;
   }
+}
+
+function localizePlaylistLabel(label: string) {
+  if (label === "Library") {
+    return DEFAULT_PLAYLIST_LABEL;
+  }
+  if (label === "Folders") {
+    return DEFAULT_FOLDER_PLAYLIST_LABEL;
+  }
+  return label || DEFAULT_PLAYLIST_LABEL;
 }
 
 function removePlaybackStateForTrack(trackId: string) {

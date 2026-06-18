@@ -47,7 +47,7 @@ export function useAudioPlayer(queue: Track[]) {
     };
     const updateDuration = () => setDuration(Number.isFinite(audio.duration) ? audio.duration : 0);
     const handleError = () => {
-      setPlaybackError("Unable to play this track.");
+      setPlaybackError("无法播放这首歌曲。");
       setIsPlaying(false);
     };
 

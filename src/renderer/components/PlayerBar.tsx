@@ -37,7 +37,7 @@ export function PlayerBar({
   onVolume,
   onPlaybackMode
 }: PlayerBarProps) {
-  const playbackModeLabel = shuffle ? "shuffle" : repeat === "all" ? "repeat all" : repeat === "one" ? "repeat one" : "off";
+  const playbackModeLabel = shuffle ? "随机播放" : repeat === "all" ? "全部循环" : repeat === "one" ? "单曲循环" : "关闭";
   const isPlaybackModeActive = shuffle || repeat !== "off";
 
   return (
@@ -45,34 +45,34 @@ export function PlayerBar({
       <button
         className="mini-now-playing"
         type="button"
-        aria-label="Open fullscreen lyrics"
+        aria-label="打开全屏歌词"
         onClick={onOpenNowPlaying}
         disabled={!track}
       >
         <span className="mini-cover">
-          {artworkUrl ? <img src={artworkUrl} alt={track ? `${track.album} cover` : "Album cover"} /> : <Disc3 size={22} />}
+          {artworkUrl ? <img src={artworkUrl} alt={track ? `${track.album} 封面` : "专辑封面"} /> : <Disc3 size={22} />}
         </span>
         <span className="mini-track-copy">
-          <strong>{track?.title ?? "Nothing playing"}</strong>
-          <small>{track?.artist ?? "Choose a track"}</small>
+          <strong>{track?.title ?? "暂无播放"}</strong>
+          <small>{track?.artist ?? "选择歌曲"}</small>
         </span>
       </button>
 
       <div className="transport">
-        <button className="icon-button" onClick={onPrevious} type="button" aria-label="Previous">
+        <button className="icon-button" onClick={onPrevious} type="button" aria-label="上一首">
           <SkipBack size={20} />
         </button>
-        <button className="play-button" onClick={onPlayPause} type="button" aria-label={isPlaying ? "Pause" : "Play"}>
+        <button className="play-button" onClick={onPlayPause} type="button" aria-label={isPlaying ? "暂停" : "播放"}>
           {isPlaying ? <Pause size={24} fill="currentColor" /> : <Play size={24} fill="currentColor" />}
         </button>
-        <button className="icon-button" onClick={onNext} type="button" aria-label="Next">
+        <button className="icon-button" onClick={onNext} type="button" aria-label="下一首">
           <SkipForward size={20} />
         </button>
         <button
           className={isPlaybackModeActive ? "icon-button active" : "icon-button"}
           onClick={onPlaybackMode}
           type="button"
-          aria-label={`Playback mode: ${playbackModeLabel}`}
+          aria-label={`播放模式：${playbackModeLabel}`}
         >
           {shuffle ? <Shuffle size={18} /> : <Repeat size={18} />}
           {repeat === "one" ? <span className="repeat-one">1</span> : null}
@@ -82,7 +82,7 @@ export function PlayerBar({
       <div className="timeline">
         <span>{formatTime(currentTime)}</span>
         <input
-          aria-label="Seek"
+          aria-label="进度"
           type="range"
           min="0"
           max={duration || 0}
@@ -96,7 +96,7 @@ export function PlayerBar({
       <label className="volume-control">
         <Volume2 size={18} />
         <input
-          aria-label="Volume"
+          aria-label="音量"
           type="range"
           min="0"
           max="1"

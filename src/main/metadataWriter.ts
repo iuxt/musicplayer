@@ -19,7 +19,7 @@ export async function writeTrackMetadata(
   try {
     normalized = normalizeTrackMetadataUpdate(metadata);
   } catch (error) {
-    return { ok: false, error: errorMessage(error, "Invalid metadata.") };
+    return { ok: false, error: errorMessage(error, "无效的音乐信息。") };
   }
 
   const tempPath = temporaryAudioPath(filePath);
@@ -33,7 +33,7 @@ export async function writeTrackMetadata(
     return { ok: true, metadata: await readTrackMetadataFields(filePath, normalized) };
   } catch (error) {
     await rm(tempPath, { force: true }).catch(() => undefined);
-    return { ok: false, error: errorMessage(error, "Unable to update music information.") };
+    return { ok: false, error: errorMessage(error, "无法更新音乐信息。") };
   }
 }
 
@@ -46,19 +46,19 @@ export function normalizeTrackMetadataUpdate(metadata: TrackMetadataUpdate): Tra
   };
 
   if (!normalized.title) {
-    throw new Error("Title is required.");
+    throw new Error("标题不能为空");
   }
   if (!normalized.artist) {
-    throw new Error("Artist is required.");
+    throw new Error("歌手不能为空");
   }
   if (!normalized.album) {
-    throw new Error("Album is required.");
+    throw new Error("专辑不能为空");
   }
   if (
     normalized.trackNumber !== null &&
     (!Number.isInteger(normalized.trackNumber) || normalized.trackNumber <= 0)
   ) {
-    throw new Error("Track number must be a positive integer.");
+    throw new Error("曲号必须是正整数");
   }
 
   return normalized;

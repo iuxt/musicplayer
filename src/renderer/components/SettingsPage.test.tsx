@@ -8,9 +8,9 @@ describe("SettingsPage", () => {
 
     render(<SettingsPage {...props} />);
 
-    expect(screen.getByRole("region", { name: "Settings" })).toBeTruthy();
-    expect(screen.getByText("No music folder selected.")).toBeTruthy();
-    expect((screen.getByRole("button", { name: "Rescan Library" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("region", { name: "设置" })).toBeTruthy();
+    expect(screen.getByText("尚未选择音乐文件夹。")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "重新扫描音乐库" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("disables rescan while scanning an existing folder", () => {
@@ -18,16 +18,16 @@ describe("SettingsPage", () => {
 
     render(<SettingsPage {...props} />);
 
-    expect((screen.getByRole("button", { name: "Rescan Library" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "重新扫描音乐库" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("calls library action callbacks", () => {
     const props = makeProps({ folderPath: "/Users/test/Music" });
 
     render(<SettingsPage {...props} />);
-    fireEvent.click(screen.getByRole("button", { name: "Choose Folder" }));
-    fireEvent.click(screen.getByRole("button", { name: "Rescan Library" }));
-    fireEvent.click(screen.getByRole("button", { name: "Clear Library Cache" }));
+    fireEvent.click(screen.getByRole("button", { name: "选择文件夹" }));
+    fireEvent.click(screen.getByRole("button", { name: "重新扫描音乐库" }));
+    fireEvent.click(screen.getByRole("button", { name: "清除音乐库缓存" }));
 
     expect(props.onChooseFolder).toHaveBeenCalled();
     expect(props.onRescanLibrary).toHaveBeenCalled();
@@ -38,25 +38,25 @@ describe("SettingsPage", () => {
     render(
       <SettingsPage
         {...makeProps({
-          cacheStatus: "Library cache cleared.",
-          cacheError: "Unable to clear the library cache."
+          cacheStatus: "音乐库缓存已清除。",
+          cacheError: "无法清除音乐库缓存。"
         })}
       />
     );
 
-    expect(screen.getByRole("status").textContent).toBe("Library cache cleared.");
-    expect(screen.getByRole("alert").textContent).toBe("Unable to clear the library cache.");
+    expect(screen.getByRole("status").textContent).toBe("音乐库缓存已清除。");
+    expect(screen.getByRole("alert").textContent).toBe("无法清除音乐库缓存。");
   });
 
   it("changes fullscreen lyrics font size", () => {
     const props = makeProps({ fullscreenLyricsFontSize: 36 });
 
     render(<SettingsPage {...props} />);
-    fireEvent.change(screen.getByLabelText("Fullscreen lyrics font size"), { target: { value: "48" } });
+    fireEvent.change(screen.getByLabelText("全屏歌词字号"), { target: { value: "48" } });
 
     expect(props.onFullscreenLyricsFontSizeChange).toHaveBeenCalledWith(48);
     expect(screen.getByText("36px")).toBeTruthy();
-    expect(screen.getByText("Lyrics preview line")).toBeTruthy();
+    expect(screen.getByText("歌词预览行")).toBeTruthy();
   });
 });
 

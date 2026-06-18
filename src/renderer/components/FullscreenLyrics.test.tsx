@@ -40,7 +40,7 @@ describe("FullscreenLyrics", () => {
       />
     );
 
-    const fullscreenLyrics = screen.getByRole("region", { name: "Fullscreen lyrics" });
+    const fullscreenLyrics = screen.getByRole("region", { name: "全屏歌词" });
     expect((fullscreenLyrics as HTMLElement).style.getPropertyValue("--fullscreen-lyrics-font-size")).toBe("48px");
   });
 });

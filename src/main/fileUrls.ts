@@ -3,7 +3,7 @@ import { pathToFileURL } from "node:url";
 
 export function toMediaFileUrl(filePath: string): string {
   if (!filePath.trim()) {
-    throw new Error("filePath is required");
+    throw new Error("缺少文件路径");
   }
 
   return pathToFileURL(filePath).toString();

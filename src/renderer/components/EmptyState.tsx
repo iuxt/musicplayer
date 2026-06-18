@@ -11,10 +11,10 @@ export function EmptyState({ onChooseFolder, isScanning }: EmptyStateProps) {
       <div className="empty-icon">
         <FolderOpen size={34} />
       </div>
-      <h2>Choose your music folder</h2>
-      <p>Scan a local folder and every nested folder inside it. Your songs stay on this computer.</p>
+      <h2>选择音乐文件夹</h2>
+      <p>扫描本地文件夹及其子文件夹。你的歌曲会留在这台电脑上。</p>
       <button className="primary-button" onClick={onChooseFolder} disabled={isScanning} type="button">
-        Choose Folder
+        选择文件夹
       </button>
     </section>
   );

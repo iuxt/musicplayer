@@ -18,8 +18,8 @@ describe("scanMusicFolder", () => {
     expect(result.folderPath).toBe(root);
     expect(result.tracks.map((track) => track.title).sort()).toEqual(["first", "nested"]);
     expect(result.tracks.map((track) => track.extension).sort()).toEqual(["flac", "mp3"]);
-    expect(result.tracks.every((track) => track.artist === "Unknown Artist")).toBe(true);
-    expect(result.tracks.every((track) => track.album === "Unknown Album")).toBe(true);
+    expect(result.tracks.every((track) => track.artist === "未知歌手")).toBe(true);
+    expect(result.tracks.every((track) => track.album === "未知专辑")).toBe(true);
     expect(result.warnings).toEqual([]);
   });
 
