@@ -10,7 +10,12 @@ export const FALLBACK_SYSTEM_FONTS = [
   "Helvetica"
 ];
 
-type ExecFile = typeof defaultExecFile;
+type ExecFile = (
+  command: string,
+  args: string[],
+  options: { maxBuffer: number },
+  callback: (error: Error | null, stdout: string | Buffer) => void
+) => void;
 
 interface ListSystemFontsOptions {
   platform?: NodeJS.Platform;
@@ -99,7 +104,7 @@ function execFileText(execFile: ExecFile, command: string, args: string[]) {
         reject(error);
         return;
       }
-      resolve(stdout);
+      resolve(stdout.toString());
     });
   });
 }

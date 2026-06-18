@@ -5,7 +5,7 @@ import {
   normalizeFontNames,
   parseFcListOutput,
   parseMacFontOutput
-} from "./systemFonts";
+} from "./systemFonts.js";
 
 describe("systemFonts", () => {
   it("normalizes, deduplicates, and sorts font names", () => {
@@ -28,8 +28,8 @@ describe("systemFonts", () => {
   });
 
   it("returns fallback fonts when enumeration fails", async () => {
-    const execFile = vi.fn((_file, _args, callback) => {
-      callback(new Error("missing command"), "", "");
+    const execFile = vi.fn((_file, _args, _options, callback) => {
+      callback(new Error("missing command"), "");
     });
 
     await expect(listSystemFonts({ platform: "linux", execFile })).resolves.toEqual(FALLBACK_SYSTEM_FONTS);
