@@ -83,6 +83,37 @@ describe("LibraryList", () => {
     expect(artwork.getAttribute("src")).toBe("file:///music/cover.jpg");
     expect(getArtworkUrl).toHaveBeenCalledWith("/music/cover.jpg");
   });
+
+  it("shows album artwork from the first album track with artwork", async () => {
+    const tracks = [
+      makeTrack(1, { artworkPath: null }),
+      makeTrack(2, { artworkPath: "/music/album-cover.jpg" })
+    ];
+    const getArtworkUrl = vi.fn(async (filePath: string | null) => (filePath ? `file://${filePath}` : null));
+    Object.defineProperty(window, "musicApi", {
+      configurable: true,
+      value: { getArtworkUrl }
+    });
+
+    render(
+      <LibraryList
+        category="albums"
+        tracks={tracks}
+        currentTrack={null}
+        search=""
+        selectedFolderPath={null}
+        onSearchChange={() => undefined}
+        onSelectTrack={() => undefined}
+        onOpenFolder={() => undefined}
+        onBackToFolders={() => undefined}
+        onTrackContextMenu={() => undefined}
+      />
+    );
+
+    const artwork = await screen.findByRole("img", { name: "Album 封面" });
+    expect(artwork.getAttribute("src")).toBe("file:///music/album-cover.jpg");
+    expect(getArtworkUrl).toHaveBeenCalledWith("/music/album-cover.jpg");
+  });
 });
 
 function makeTrack(index: number, overrides: Partial<Track> = {}): Track {

@@ -123,21 +123,7 @@ export const LibraryList = memo(function LibraryList({
           items={groups}
           getKey={(group) => group.key}
           renderItem={(group, index) => (
-            <button
-              className="track-row category-row"
-              onClick={() => {
-                onSelectTrack(group.tracks[0], group.tracks);
-              }}
-              type="button"
-            >
-              <span className="track-index">{String(index + 1).padStart(2, "0")}</span>
-              <span className="track-title">
-                <strong>{group.label}</strong>
-                <small>{group.detail}</small>
-              </span>
-              <span className="track-album">{group.tracks.length} 首歌曲</span>
-              <span className="track-duration">播放</span>
-            </button>
+            <GroupRow category={category} group={group} index={index} onSelectTrack={onSelectTrack} />
           )}
         />
       )}
@@ -158,8 +144,6 @@ function TrackRow({
   onSelectTrack: (track: Track, queueTracks?: Track[]) => void;
   onTrackContextMenu: (track: Track, position: { x: number; y: number }) => void;
 }) {
-  const artworkUrl = useTrackArtworkUrl(track.artworkPath);
-
   return (
     <button
       className={`track-row song-row ${currentTrack?.id === track.id ? "active" : ""}`}
@@ -171,9 +155,7 @@ function TrackRow({
       type="button"
     >
       <span className="track-index">{String(index + 1).padStart(2, "0")}</span>
-      <span className="track-artwork">
-        {artworkUrl ? <img src={artworkUrl} alt={`${track.album} 封面`} /> : <Disc3 size={18} aria-hidden="true" />}
-      </span>
+      <ArtworkThumbnail alt={`${track.album} 封面`} artworkPath={track.artworkPath} />
       <span className="track-title">
         <strong>{track.title}</strong>
         <small>{track.artist}</small>
@@ -184,7 +166,51 @@ function TrackRow({
   );
 }
 
-function useTrackArtworkUrl(artworkPath: string | null) {
+function GroupRow({
+  category,
+  group,
+  index,
+  onSelectTrack
+}: {
+  category: Exclude<LibraryCategory, "songs" | "folders">;
+  group: { key: string; label: string; detail: string; tracks: Track[] };
+  index: number;
+  onSelectTrack: (track: Track, queueTracks?: Track[]) => void;
+}) {
+  const isAlbum = category === "albums";
+  const artworkPath = isAlbum ? group.tracks.find((track) => track.artworkPath)?.artworkPath ?? null : null;
+
+  return (
+    <button
+      className={`track-row category-row ${isAlbum ? "album-row" : ""}`}
+      onClick={() => {
+        onSelectTrack(group.tracks[0], group.tracks);
+      }}
+      type="button"
+    >
+      <span className="track-index">{String(index + 1).padStart(2, "0")}</span>
+      {isAlbum ? <ArtworkThumbnail alt={`${group.label} 封面`} artworkPath={artworkPath} /> : null}
+      <span className="track-title">
+        <strong>{group.label}</strong>
+        <small>{group.detail}</small>
+      </span>
+      <span className="track-album">{group.tracks.length} 首歌曲</span>
+      <span className="track-duration">播放</span>
+    </button>
+  );
+}
+
+function ArtworkThumbnail({ alt, artworkPath }: { alt: string; artworkPath: string | null }) {
+  const artworkUrl = useArtworkUrl(artworkPath);
+
+  return (
+    <span className="track-artwork">
+      {artworkUrl ? <img src={artworkUrl} alt={alt} /> : <Disc3 size={18} aria-hidden="true" />}
+    </span>
+  );
+}
+
+function useArtworkUrl(artworkPath: string | null) {
   const [artworkUrl, setArtworkUrl] = useState<string | null>(null);
 
   useEffect(() => {
