@@ -71,7 +71,7 @@ export function parsePowerShellFontOutput(output: string) {
 }
 
 export function normalizeFontNames(names: string[]) {
-  return [...new Set(names.map((name) => name.trim()).filter(Boolean))].sort((left, right) =>
+  return [...new Set(names.map((name) => name.trim()).filter((name) => name && !name.startsWith(".")))].sort((left, right) =>
     left.localeCompare(right, undefined, { sensitivity: "base" })
   );
 }

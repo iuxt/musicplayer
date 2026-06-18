@@ -23,6 +23,10 @@ describe("systemFonts", () => {
     expect(parseMacFontOutput(output)).toEqual(["LXGW WenKai", "PingFang SC"]);
   });
 
+  it("filters hidden dot-prefixed font names", () => {
+    expect(normalizeFontNames([".Apple Symbols Fallback", " PingFang SC ", ".SF NS"])).toEqual(["PingFang SC"]);
+  });
+
   it("parses Linux fc-list output", () => {
     expect(parseFcListOutput("Noto Sans CJK SC\nArial\nNoto Sans CJK SC\n")).toEqual(["Arial", "Noto Sans CJK SC"]);
   });
