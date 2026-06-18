@@ -554,7 +554,13 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "设置" }));
     fireEvent.change(screen.getByLabelText("全屏歌词字号"), { target: { value: "48" } });
 
-    expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toEqual({ fullscreenLyricsFontSize: 48 });
+    expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toEqual({
+      fullscreenLyricsFontFamily: "",
+      fullscreenLyricsFontSize: 48,
+      desktopLyricsEnabled: false,
+      desktopLyricsFontFamily: "",
+      desktopLyricsFontSize: 28
+    });
 
     fireEvent.click(screen.getByRole("button", { name: "歌曲" }));
     await act(async () => {
