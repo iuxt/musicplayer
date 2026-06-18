@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 
 import type {
+  DesktopLyricsPayload,
   MediaActionResult,
   ScanProgress,
   ScanResult,
@@ -24,6 +25,13 @@ declare global {
       updateTrackMetadata: (filePath: string, metadata: TrackMetadataUpdate) => Promise<UpdateTrackMetadataResult>;
       trashTrackLyrics: (track: Track) => Promise<MediaActionResult>;
       trashTrackFiles: (track: Track) => Promise<TrashTrackFilesResult>;
+      listSystemFonts: () => Promise<string[]>;
+      showDesktopLyrics: () => Promise<void>;
+      closeDesktopLyrics: () => Promise<void>;
+      updateDesktopLyrics: (payload: DesktopLyricsPayload) => Promise<void>;
+      openMainSettingsFromDesktopLyrics: () => Promise<void>;
+      onDesktopLyricsUpdate: (callback: (payload: DesktopLyricsPayload) => void) => () => void;
+      onDesktopLyricsClosed: (callback: () => void) => () => void;
       onScanProgress: (callback: (progress: ScanProgress) => void) => () => void;
       onMenuCommand: (callback: (command: MenuCommand) => void) => () => void;
     };
