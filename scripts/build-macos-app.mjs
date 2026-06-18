@@ -23,6 +23,7 @@ export function getBuildPaths(projectRoot, arch = normalizeDarwinArch(), staging
 
   return {
     appName,
+    iconPath: path.join(projectRoot, "build", "app-icon.icns"),
     projectReleaseDir,
     stagingDir,
     packagedAppPath: path.join(stagingDir, `${appName}-darwin-${arch}`, `${appName}.app`),
@@ -34,6 +35,32 @@ export function getInstallCommand(packagedAppPath, applicationsPath) {
   return {
     command: "ditto",
     args: [packagedAppPath, applicationsPath]
+  };
+}
+
+export function getPackagerOptions(projectRoot, paths, arch) {
+  return {
+    dir: projectRoot,
+    name: paths.appName,
+    platform: "darwin",
+    arch,
+    out: paths.stagingDir,
+    overwrite: true,
+    asar: true,
+    prune: true,
+    icon: paths.iconPath,
+    appBundleId: "local.musicplayer.app",
+    appCategoryType: "public.app-category.music",
+    ignore: [
+      /^\/\.git($|\/)/,
+      /^\/\.worktrees($|\/)/,
+      /^\/\.superpowers($|\/)/,
+      /^\/docs($|\/)/,
+      /^\/src($|\/)/,
+      /^\/scripts\/.*\.test\.ts$/,
+      /^\/dist-electron\/.*\.test\.js$/,
+      /^\/release($|\/)/
+    ]
   };
 }
 
@@ -51,28 +78,7 @@ async function main() {
     await run("npm", ["run", "build"], projectRoot);
     await rm(paths.projectReleaseDir, { recursive: true, force: true });
 
-    await packager({
-      dir: projectRoot,
-      name: paths.appName,
-      platform: "darwin",
-      arch,
-      out: paths.stagingDir,
-      overwrite: true,
-      asar: true,
-      prune: true,
-      appBundleId: "local.musicplayer.app",
-      appCategoryType: "public.app-category.music",
-      ignore: [
-        /^\/\.git($|\/)/,
-        /^\/\.worktrees($|\/)/,
-        /^\/\.superpowers($|\/)/,
-        /^\/docs($|\/)/,
-        /^\/src($|\/)/,
-        /^\/scripts\/.*\.test\.ts$/,
-        /^\/dist-electron\/.*\.test\.js$/,
-        /^\/release($|\/)/
-      ]
-    });
+    await packager(getPackagerOptions(projectRoot, paths, arch));
 
     await rm(paths.applicationsPath, { recursive: true, force: true });
     const install = getInstallCommand(paths.packagedAppPath, paths.applicationsPath);

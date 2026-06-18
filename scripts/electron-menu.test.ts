@@ -14,4 +14,11 @@ describe("Electron application menu", () => {
     expect(mainSource).toContain("library:menu-command");
     expect(mainSource).toContain("setApplicationMenu");
   });
+
+  it("uses the project app icon for Electron windows", async () => {
+    const mainSource = await readFile(path.join(process.cwd(), "electron/main.ts"), "utf8");
+
+    expect(mainSource).toContain("app-icon.png");
+    expect(mainSource).toContain("icon:");
+  });
 });

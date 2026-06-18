@@ -9,6 +9,7 @@ import type { Track, TrackMetadataUpdate } from "../src/shared/types.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const appIconPath = path.join(__dirname, "../../build/app-icon.png");
 
 type MenuCommand = "choose-folder" | "rescan-library";
 
@@ -115,6 +116,7 @@ async function createWindow() {
     minHeight: 680,
     titleBarStyle: "hiddenInset",
     backgroundColor: "#f5f5f7",
+    icon: appIconPath,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
@@ -132,6 +134,10 @@ async function createWindow() {
 }
 
 app.whenReady().then(() => {
+  if (process.platform === "darwin") {
+    app.dock?.setIcon(appIconPath);
+  }
+
   createApplicationMenu();
   registerIpc();
   return createWindow();

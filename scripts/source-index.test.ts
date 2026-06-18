@@ -11,4 +11,10 @@ describe("source index.html", () => {
     expect(source).toContain('/src/renderer/main.tsx');
     expect(source).not.toContain("./assets/");
   });
+
+  it("declares the project favicon source", async () => {
+    const source = await readFile(path.join(process.cwd(), "index.html"), "utf8");
+
+    expect(source).toContain('<link rel="icon" type="image/svg+xml" href="/favicon.svg" />');
+  });
 });

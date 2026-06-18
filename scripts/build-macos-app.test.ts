@@ -1,6 +1,6 @@
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { getBuildPaths, getInstallCommand, normalizeDarwinArch } from "./build-macos-app.mjs";
+import { getBuildPaths, getInstallCommand, getPackagerOptions, normalizeDarwinArch } from "./build-macos-app.mjs";
 
 describe("build-macos-app helpers", () => {
   it("normalizes Node architecture names for Electron packaging", () => {
@@ -25,5 +25,12 @@ describe("build-macos-app helpers", () => {
       command: "ditto",
       args: ["/tmp/App.app", "/Applications/App.app"]
     });
+  });
+
+  it("passes the custom macOS app icon to Electron Packager", () => {
+    const paths = getBuildPaths("/repo", "arm64", "/tmp/local-music-player-build");
+    const options = getPackagerOptions("/repo", paths, "arm64");
+
+    expect(options.icon).toBe(path.join("/repo", "build", "app-icon.icns"));
   });
 });
