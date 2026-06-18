@@ -113,7 +113,7 @@ Expected: FAIL because `src/renderer/appSettings.ts` does not exist.
 Create `src/renderer/appSettings.ts`:
 
 ```ts
-export const APP_SETTINGS_STORAGE_KEY = "local-music-player:settings";
+export const APP_SETTINGS_STORAGE_KEY = "musicplayer:settings";
 export const MIN_FULLSCREEN_LYRICS_FONT_SIZE = 24;
 export const MAX_FULLSCREEN_LYRICS_FONT_SIZE = 56;
 
@@ -541,14 +541,14 @@ git commit -m "feat: add settings page component"
 Add this constant near the existing storage-key constants in `src/renderer/App.test.tsx`:
 
 ```ts
-const appSettingsKey = "local-music-player:settings";
+const appSettingsKey = "musicplayer:settings";
 ```
 
 Add these tests before the closing `});` of `describe("App", () => { ... })`:
 
 ```ts
   it("opens settings from the sidebar and returns to the library from a category", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
 
     render(<App />);
@@ -566,7 +566,7 @@ Add these tests before the closing `});` of `describe("App", () => { ... })`:
   });
 
   it("clears only the library cache from settings", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
     localStorage.setItem(
       playbackStateKey,
@@ -586,14 +586,14 @@ Add these tests before the closing `});` of `describe("App", () => { ... })`:
     fireEvent.click(screen.getByRole("button", { name: "Clear Library Cache" }));
 
     expect(localStorage.getItem(libraryCacheKey)).toBeNull();
-    expect(localStorage.getItem("local-music-player:last-folder")).toBe(rememberedFolder);
+    expect(localStorage.getItem("musicplayer:last-folder")).toBe(rememberedFolder);
     expect(localStorage.getItem(playbackStateKey)).not.toBeNull();
     expect(screen.getByText("Library cache cleared.")).toBeTruthy();
   });
 
   it("persists fullscreen lyrics font size and applies it to fullscreen lyrics", async () => {
     const trackWithLyrics = { ...track, lyricsPath: "/music/Wave Song.lrc", hasLyrics: true };
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify({ ...scanResult, tracks: [trackWithLyrics] }));
     window.musicApi.getLyrics = vi.fn(async () => "[00:00.00]Preview lyric");
 

@@ -1,4 +1,4 @@
-# Local Music Player
+# musicplayer
 
 A polished desktop music player for local libraries, built with Electron, React, and TypeScript.
 

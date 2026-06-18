@@ -1,8 +1,8 @@
-# Local Music Player Design
+# musicplayer Design
 
 ## Goal
 
-Build a polished desktop local music player inspired by Apple Music's clean, immersive listening experience. The app should let the user choose a local music folder, recursively scan all nested folders for audio files, and play the discovered library with a beautiful first screen centered on the current track and album art.
+Build a polished desktop musicplayer inspired by Apple Music's clean, immersive listening experience. The app should let the user choose a local music folder, recursively scan all nested folders for audio files, and play the discovered library with a beautiful first screen centered on the current track and album art.
 
 ## Platform And Stack
 

@@ -22,7 +22,7 @@ This keeps the storage model consistent with the existing startup cache and avoi
 
 ## Architecture
 
-`App.tsx` remains the owner of library, queue, and persistence orchestration. It will read and validate a `local-music-player:playback-state` value after loading a `ScanResult`, then apply restored queue metadata before telling the audio hook which track and time to restore.
+`App.tsx` remains the owner of library, queue, and persistence orchestration. It will read and validate a `musicplayer:playback-state` value after loading a `ScanResult`, then apply restored queue metadata before telling the audio hook which track and time to restore.
 
 `useAudioPlayer` remains the playback engine. It should gain a small paused-restore path that loads a playable URL, sets `audio.currentTime` to the requested time when metadata is ready enough to accept it, updates React state, and leaves `isPlaying` false.
 

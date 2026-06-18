@@ -15,9 +15,9 @@ import { getParentFolderPath, getTracksAtFolderLevel } from "./folderBrowser";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
 import type { LibraryCategory } from "./libraryCategories";
 
-const LAST_FOLDER_STORAGE_KEY = "local-music-player:last-folder";
-const LIBRARY_CACHE_STORAGE_KEY = "local-music-player:library-cache";
-const PLAYBACK_STATE_STORAGE_KEY = "local-music-player:playback-state";
+const LAST_FOLDER_STORAGE_KEY = "musicplayer:last-folder";
+const LIBRARY_CACHE_STORAGE_KEY = "musicplayer:library-cache";
+const PLAYBACK_STATE_STORAGE_KEY = "musicplayer:playback-state";
 const PLAYBACK_PROGRESS_SAVE_INTERVAL_MS = 5000;
 const DEFAULT_PLAYLIST_LABEL = "音乐库";
 const DEFAULT_FOLDER_PLAYLIST_LABEL = "文件夹";

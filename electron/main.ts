@@ -10,6 +10,9 @@ import type { Track, TrackMetadataUpdate } from "../src/shared/types.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const appIconPath = path.join(__dirname, "../../build/app-icon.png");
+const appDisplayName = "音乐播放器";
+
+app.setName(appDisplayName);
 
 type MenuCommand = "choose-folder" | "rescan-library";
 
@@ -23,7 +26,7 @@ function createApplicationMenu() {
     ...(process.platform === "darwin"
       ? [
           {
-            label: app.name,
+            label: appDisplayName,
             submenu: [{ role: "about" }, { type: "separator" }, { role: "quit" }]
           } satisfies MenuItemConstructorOptions
         ]

@@ -1,5 +1,5 @@
 {
-  "name": "local-music-player",
+  "name": "musicplayer",
   "version": "1.0.0",
   "private": true,
   "type": "module",
@@ -43,8 +43,8 @@
     "wait-on": "^8.0.0"
   },
   "build": {
-    "appId": "local.musicplayer.app",
-    "productName": "本地音乐播放器",
+    "appId": "musicplayer.app",
+    "productName": "音乐播放器",
     "asar": true,
     "directories": {
       "output": "release"
@@ -58,7 +58,7 @@
     "extraMetadata": {
       "main": "dist-electron/electron/main.js"
     },
-    "artifactName": "local-music-player-${version}-${os}-${arch}.${ext}",
+    "artifactName": "musicplayer-${version}-${os}-${arch}.${ext}",
     "mac": {
       "category": "public.app-category.music",
       "icon": "build/app-icon.icns",

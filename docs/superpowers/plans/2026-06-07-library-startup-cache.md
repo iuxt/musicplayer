@@ -18,7 +18,7 @@
 
 - [ ] **Step 1: Write failing tests**
 
-Add tests that store `local-music-player:last-folder` and `local-music-player:library-cache`, render `<App />`, and expect cached tracks to appear without `window.musicApi.rescanLibrary` being called. Keep a separate startup fallback test that has only the folder key and expects `rescanLibrary(rememberedFolder)`.
+Add tests that store `musicplayer:last-folder` and `musicplayer:library-cache`, render `<App />`, and expect cached tracks to appear without `window.musicApi.rescanLibrary` being called. Keep a separate startup fallback test that has only the folder key and expects `rescanLibrary(rememberedFolder)`.
 
 - [ ] **Step 2: Run test to verify RED**
 

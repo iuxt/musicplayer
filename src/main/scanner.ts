@@ -202,7 +202,7 @@ export async function writeEmbeddedArtwork(
   trackPath: string,
   picture: { format: string; data: Uint8Array }
 ): Promise<string> {
-  const cacheDir = path.join(os.tmpdir(), "local-music-player-artwork");
+  const cacheDir = path.join(os.tmpdir(), "musicplayer-artwork");
   await mkdir(cacheDir, { recursive: true });
   const extension = artworkExtensionForFormat(picture.format);
   const artworkPath = path.join(cacheDir, `${stableId(trackPath)}.${extension}`);

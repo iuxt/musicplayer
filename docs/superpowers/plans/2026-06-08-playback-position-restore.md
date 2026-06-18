@@ -20,14 +20,14 @@
 Add a `playbackStateKey` constant beside `libraryCacheKey`:
 
 ```ts
-const playbackStateKey = "local-music-player:playback-state";
+const playbackStateKey = "musicplayer:playback-state";
 ```
 
 Add this test in the `App` describe block:
 
 ```ts
 it("restores the last played track and position on startup without autoplaying", async () => {
-  localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+  localStorage.setItem("musicplayer:last-folder", rememberedFolder);
   localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
   localStorage.setItem(
     playbackStateKey,
@@ -59,7 +59,7 @@ Add this test in the `App` describe block:
 
 ```ts
 it("ignores a saved playback track that is missing from the restored library", async () => {
-  localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+  localStorage.setItem("musicplayer:last-folder", rememberedFolder);
   localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
   localStorage.setItem(
     playbackStateKey,
@@ -183,7 +183,7 @@ Expected: hook tests pass.
 Add beside existing storage keys:
 
 ```ts
-const PLAYBACK_STATE_STORAGE_KEY = "local-music-player:playback-state";
+const PLAYBACK_STATE_STORAGE_KEY = "musicplayer:playback-state";
 ```
 
 Add below the constants:

@@ -56,7 +56,7 @@
 - Update as needed based on verification.
 
 - [ ] Run `npm run build:mac`.
-- [ ] Launch `/Applications/Local Music Player.app` and verify the app renders.
+- [ ] Launch `/Applications/音乐播放器.app` and verify the app renders.
 - [ ] Commit the completed change.
 
 ## Self-Review

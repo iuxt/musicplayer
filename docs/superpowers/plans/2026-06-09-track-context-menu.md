@@ -1107,7 +1107,7 @@ Add tests to `src/renderer/App.test.tsx`:
 
 ```tsx
   it("opens the track context menu and disables lyric deletion when no lyrics exist", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
 
     render(<App />);
@@ -1123,7 +1123,7 @@ Add tests to `src/renderer/App.test.tsx`:
   });
 
   it("saves edited metadata and updates visible track data", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
 
     render(<App />);
@@ -1150,7 +1150,7 @@ Add tests to `src/renderer/App.test.tsx`:
 
   it("trashes lyrics and clears lyric state for the track", async () => {
     const trackWithLyrics = { ...track, lyricsPath: "/music/Wave Song.lrc", hasLyrics: true };
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify({ ...scanResult, tracks: [trackWithLyrics, secondTrack] }));
 
     render(<App />);
@@ -1166,7 +1166,7 @@ Add tests to `src/renderer/App.test.tsx`:
   });
 
   it("trashes a track and removes it from library and playlist", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
     vi.spyOn(window, "confirm").mockReturnValue(true);
 

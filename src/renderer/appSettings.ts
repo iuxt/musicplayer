@@ -1,4 +1,4 @@
-export const APP_SETTINGS_STORAGE_KEY = "local-music-player:settings";
+export const APP_SETTINGS_STORAGE_KEY = "musicplayer:settings";
 export const MIN_FULLSCREEN_LYRICS_FONT_SIZE = 24;
 export const MAX_FULLSCREEN_LYRICS_FONT_SIZE = 56;
 

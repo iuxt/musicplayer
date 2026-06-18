@@ -2,7 +2,7 @@
 
 ## Goal
 
-Add a first settings page to the local music player. The page should expose basic library management, reserve space for future playback preferences, and let users change the fullscreen lyrics font size.
+Add a first settings page to the musicplayer. The page should expose basic library management, reserve space for future playback preferences, and let users change the fullscreen lyrics font size.
 
 ## Scope
 
@@ -78,12 +78,12 @@ Actions:
 
 - `Choose Folder`: calls the existing `chooseFolder` callback.
 - `Rescan Library`: calls the existing `rescan` callback and is disabled when no folder is selected or scanning is already active.
-- `Clear Library Cache`: removes only `local-music-player:library-cache`.
+- `Clear Library Cache`: removes only `musicplayer:library-cache`.
 
 Clearing the cache does not remove:
 
-- `local-music-player:last-folder`
-- `local-music-player:playback-state`
+- `musicplayer:last-folder`
+- `musicplayer:playback-state`
 - the currently loaded in-memory track list
 - any music, lyrics, or artwork files
 
@@ -109,7 +109,7 @@ Behavior:
 Add a settings storage key:
 
 ```ts
-const APP_SETTINGS_STORAGE_KEY = "local-music-player:settings";
+const APP_SETTINGS_STORAGE_KEY = "musicplayer:settings";
 ```
 
 Persist an extensible object:
@@ -170,7 +170,7 @@ Add focused tests for:
 - Clicking a library category switches back to the library view.
 - Settings shows the current folder path when available.
 - `Rescan Library` is disabled when there is no selected folder.
-- `Clear Library Cache` removes only `local-music-player:library-cache` and preserves last-folder and playback-state keys.
+- `Clear Library Cache` removes only `musicplayer:library-cache` and preserves last-folder and playback-state keys.
 - Fullscreen lyrics font size changes persist to `localStorage`.
 - Fullscreen lyrics receives and applies the configured font size.
 - Invalid persisted settings values fall back to the default font size.

@@ -17,8 +17,8 @@ export function normalizeDarwinArch(arch = process.arch) {
   throw new Error(`Unsupported macOS architecture: ${arch}`);
 }
 
-export function getBuildPaths(projectRoot, arch = normalizeDarwinArch(), stagingDir = path.join(os.tmpdir(), "local-music-player-build")) {
-  const appName = "本地音乐播放器";
+export function getBuildPaths(projectRoot, arch = normalizeDarwinArch(), stagingDir = path.join(os.tmpdir(), "musicplayer-build")) {
+  const appName = "音乐播放器";
   const projectReleaseDir = path.join(projectRoot, "release");
 
   return {
@@ -49,7 +49,7 @@ export function getPackagerOptions(projectRoot, paths, arch) {
     asar: true,
     prune: true,
     icon: paths.iconPath,
-    appBundleId: "local.musicplayer.app",
+    appBundleId: "musicplayer.app",
     appCategoryType: "public.app-category.music",
     ignore: [
       /^\/\.git($|\/)/,
@@ -71,7 +71,7 @@ async function main() {
 
   const projectRoot = path.resolve(__dirname, "..");
   const arch = normalizeDarwinArch(os.arch());
-  const stagingDir = await mkdtemp(path.join(os.tmpdir(), "local-music-player-"));
+  const stagingDir = await mkdtemp(path.join(os.tmpdir(), "musicplayer-"));
   const paths = getBuildPaths(projectRoot, arch, stagingDir);
 
   try {

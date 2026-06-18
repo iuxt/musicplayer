@@ -13,9 +13,9 @@ const scanResult: ScanResult = {
   tracks: [track, folderTrack, secondTrack, thirdTrack],
   warnings: []
 };
-const libraryCacheKey = "local-music-player:library-cache";
-const playbackStateKey = "local-music-player:playback-state";
-const appSettingsKey = "local-music-player:settings";
+const libraryCacheKey = "musicplayer:library-cache";
+const playbackStateKey = "musicplayer:playback-state";
+const appSettingsKey = "musicplayer:settings";
 
 let menuHandler: ((command: "choose-folder" | "rescan-library") => void) | null = null;
 let createdAudioElements: HTMLAudioElement[] = [];
@@ -68,7 +68,7 @@ describe("App", () => {
   });
 
   it("loads the cached remembered folder on startup without rescanning", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
 
     render(<App />);
@@ -78,7 +78,7 @@ describe("App", () => {
   });
 
   it("rescans the remembered folder on startup when no cache exists", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
 
     render(<App />);
 
@@ -87,7 +87,7 @@ describe("App", () => {
   });
 
   it("restores the last played track and position on startup without autoplaying", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
     localStorage.setItem(
       playbackStateKey,
@@ -113,7 +113,7 @@ describe("App", () => {
   });
 
   it("throttles playback progress persistence while a track is playing", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
     const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
 
@@ -149,7 +149,7 @@ describe("App", () => {
   });
 
   it("advances to the next playlist track when the current track ends", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
 
     render(<App />);
@@ -172,7 +172,7 @@ describe("App", () => {
   });
 
   it("advances when playback reaches the track duration without an ended event", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
 
     render(<App />);
@@ -200,7 +200,7 @@ describe("App", () => {
   });
 
   it("does not skip an extra track when end-of-track signals fire together", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
 
     render(<App />);
@@ -229,7 +229,7 @@ describe("App", () => {
   });
 
   it("ignores a saved playback track that is missing from the restored library", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
     localStorage.setItem(
       playbackStateKey,
@@ -250,7 +250,7 @@ describe("App", () => {
   });
 
   it("shows the song list without the large now-playing artwork on the main screen", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
 
     render(<App />);
 
@@ -264,7 +264,7 @@ describe("App", () => {
     render(<App />);
     fireEvent.click(screen.getAllByText("选择文件夹")[0]);
 
-    await waitFor(() => expect(localStorage.getItem("local-music-player:last-folder")).toBe(rememberedFolder));
+    await waitFor(() => expect(localStorage.getItem("musicplayer:last-folder")).toBe(rememberedFolder));
   });
 
   it("handles folder actions from menu commands", async () => {
@@ -286,7 +286,7 @@ describe("App", () => {
   });
 
   it("uses the sidebar action area for library categories", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
 
     render(<App />);
 
@@ -313,7 +313,7 @@ describe("App", () => {
   });
 
   it("drills into folders one level at a time and shows current-layer songs", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
 
     render(<App />);
 
@@ -350,7 +350,7 @@ describe("App", () => {
   });
 
   it("removes a track from the playlist without removing it from the library", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
 
     render(<App />);
 
@@ -366,7 +366,7 @@ describe("App", () => {
   });
 
   it("clears the playlist and keeps the library tracks visible", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
 
     render(<App />);
 
@@ -384,7 +384,7 @@ describe("App", () => {
   });
 
   it("opens the track context menu and disables lyric deletion when no lyrics exist", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
 
     render(<App />);
@@ -400,7 +400,7 @@ describe("App", () => {
   });
 
   it("saves edited metadata and updates visible track data", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
 
     render(<App />);
@@ -429,7 +429,7 @@ describe("App", () => {
 
   it("trashes lyrics and clears lyric state for the track", async () => {
     const trackWithLyrics = { ...track, lyricsPath: "/music/Wave Song.lrc", hasLyrics: true };
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify({ ...scanResult, tracks: [trackWithLyrics, secondTrack] }));
 
     render(<App />);
@@ -445,7 +445,7 @@ describe("App", () => {
   });
 
   it("trashes a track and removes it from library and playlist", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
 
@@ -463,7 +463,7 @@ describe("App", () => {
   });
 
   it("queues only the selected artist when playing an artist group", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
 
     render(<App />);
 
@@ -483,7 +483,7 @@ describe("App", () => {
   });
 
   it("opens settings from the sidebar and returns to the library from a category", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
 
     render(<App />);
@@ -503,7 +503,7 @@ describe("App", () => {
   });
 
   it("shows the selected folder path only on the settings page", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
 
     render(<App />);
@@ -517,7 +517,7 @@ describe("App", () => {
   });
 
   it("clears only the library cache from settings", async () => {
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
     localStorage.setItem(
       playbackStateKey,
@@ -537,14 +537,14 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("button", { name: "清除音乐库缓存" }));
 
     expect(localStorage.getItem(libraryCacheKey)).toBeNull();
-    expect(localStorage.getItem("local-music-player:last-folder")).toBe(rememberedFolder);
+    expect(localStorage.getItem("musicplayer:last-folder")).toBe(rememberedFolder);
     expect(localStorage.getItem(playbackStateKey)).not.toBeNull();
     expect(screen.getByText("音乐库缓存已清除。")).toBeTruthy();
   });
 
   it("persists fullscreen lyrics font size and applies it to fullscreen lyrics", async () => {
     const trackWithLyrics = { ...track, lyricsPath: "/music/Wave Song.lrc", hasLyrics: true };
-    localStorage.setItem("local-music-player:last-folder", rememberedFolder);
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify({ ...scanResult, tracks: [trackWithLyrics] }));
     window.musicApi.getLyrics = vi.fn(async () => "[00:00.00]Preview lyric");
 
