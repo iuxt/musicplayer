@@ -17,12 +17,14 @@ const libraryCacheKey = "musicplayer:library-cache";
 const playbackStateKey = "musicplayer:playback-state";
 const appSettingsKey = "musicplayer:settings";
 
-let menuHandler: ((command: "choose-folder" | "rescan-library") => void) | null = null;
+let menuHandler: ((command: "choose-folder" | "rescan-library" | "open-settings") => void) | null = null;
+let desktopLyricsClosedHandler: (() => void) | null = null;
 let createdAudioElements: HTMLAudioElement[] = [];
 
 beforeEach(() => {
   localStorage.clear();
   createdAudioElements = [];
+  desktopLyricsClosedHandler = null;
   Element.prototype.scrollIntoView = vi.fn();
   vi.stubGlobal(
     "Audio",
@@ -50,6 +52,18 @@ beforeEach(() => {
     updateTrackMetadata: vi.fn(async (_filePath, metadata) => ({ ok: true as const, metadata: { ...metadata, duration: 180 } })),
     trashTrackLyrics: vi.fn(async () => ({ ok: true as const })),
     trashTrackFiles: vi.fn(async () => ({ ok: true, audioRemoved: true, trashed: [], failed: [], error: null })),
+    listSystemFonts: vi.fn(async () => ["", "PingFang SC", "LXGW WenKai"]),
+    showDesktopLyrics: vi.fn(async () => undefined),
+    closeDesktopLyrics: vi.fn(async () => undefined),
+    updateDesktopLyrics: vi.fn(async () => undefined),
+    openMainSettingsFromDesktopLyrics: vi.fn(async () => undefined),
+    onDesktopLyricsUpdate: vi.fn(() => () => undefined),
+    onDesktopLyricsClosed: vi.fn((callback) => {
+      desktopLyricsClosedHandler = callback;
+      return () => {
+        desktopLyricsClosedHandler = null;
+      };
+    }),
     onScanProgress: vi.fn(() => () => undefined),
     onMenuCommand: vi.fn((callback) => {
       menuHandler = callback;
@@ -61,9 +75,10 @@ beforeEach(() => {
 });
 
 describe("App", () => {
-  it("renders a dedicated window drag region at the top of the app", () => {
+  it("renders a dedicated window drag region at the top of the app", async () => {
     render(<App />);
 
+    await waitFor(() => expect(window.musicApi.listSystemFonts).toHaveBeenCalled());
     expect(document.querySelector(".window-drag-region")?.getAttribute("aria-hidden")).toBe("true");
   });
 
@@ -283,6 +298,20 @@ describe("App", () => {
 
     await waitFor(() => expect(window.musicApi.rescanLibrary).toHaveBeenCalledWith(rememberedFolder));
     expect(localStorage.getItem(libraryCacheKey)).toBe(JSON.stringify(scanResult));
+  });
+
+  it("opens settings from the desktop lyrics menu command", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    await act(async () => {
+      menuHandler?.("open-settings");
+    });
+
+    expect(screen.getByRole("region", { name: "设置" })).toBeTruthy();
   });
 
   it("uses the sidebar action area for library categories", async () => {
@@ -542,6 +571,104 @@ describe("App", () => {
     expect(screen.getByText("音乐库缓存已清除。")).toBeTruthy();
   });
 
+  it("loads system fonts for lyric font controls", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+
+    render(<App />);
+
+    await waitFor(() => expect(window.musicApi.listSystemFonts).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("button", { name: "设置" }));
+
+    expect(screen.getAllByRole("option", { name: "PingFang SC" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("option", { name: "LXGW WenKai" }).length).toBeGreaterThan(0);
+  });
+
+  it("persists fullscreen lyrics font family and applies it to fullscreen lyrics", async () => {
+    const trackWithLyrics = { ...track, lyricsPath: "/music/Wave Song.lrc", hasLyrics: true };
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify({ ...scanResult, tracks: [trackWithLyrics] }));
+    window.musicApi.getLyrics = vi.fn(async () => "[00:00.00]Preview lyric");
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    fireEvent.change(screen.getByLabelText("全屏歌词字体"), { target: { value: "PingFang SC" } });
+    fireEvent.change(screen.getByLabelText("全屏歌词字号"), { target: { value: "48" } });
+
+    expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toMatchObject({
+      fullscreenLyricsFontFamily: "PingFang SC",
+      fullscreenLyricsFontSize: 48
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "歌曲" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    });
+    fireEvent.click(screen.getByRole("button", { name: "打开全屏歌词" }));
+
+    expect(await screen.findByText("Preview lyric")).toBeTruthy();
+    const fullscreenLyrics = screen.getByRole("region", { name: "全屏歌词" });
+    expect((fullscreenLyrics as HTMLElement).style.getPropertyValue("--fullscreen-lyrics-font-family")).toContain("PingFang SC");
+    expect((fullscreenLyrics as HTMLElement).style.getPropertyValue("--fullscreen-lyrics-font-size")).toBe("48px");
+  });
+
+  it("opens and updates desktop lyrics when enabled", async () => {
+    const trackWithLyrics = { ...track, lyricsPath: "/music/Wave Song.lrc", hasLyrics: true };
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify({ ...scanResult, tracks: [trackWithLyrics] }));
+    window.musicApi.getLyrics = vi.fn(async () => "[00:00.00]Desktop current\n[00:10.00]Desktop next");
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    fireEvent.change(screen.getByLabelText("桌面歌词字体"), { target: { value: "LXGW WenKai" } });
+    fireEvent.change(screen.getByLabelText("桌面歌词字号"), { target: { value: "32" } });
+    fireEvent.click(screen.getByLabelText("显示桌面歌词"));
+
+    expect(window.musicApi.showDesktopLyrics).toHaveBeenCalled();
+    expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toMatchObject({
+      desktopLyricsEnabled: true,
+      desktopLyricsFontFamily: "LXGW WenKai",
+      desktopLyricsFontSize: 32
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "歌曲" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    });
+
+    await waitFor(() =>
+      expect(window.musicApi.updateDesktopLyrics).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          trackTitle: "Wave Song",
+          artist: "Artist",
+          currentLine: "Desktop current",
+          nextLine: "Desktop next",
+          fontFamily: "LXGW WenKai",
+          fontSize: 32
+        })
+      )
+    );
+  });
+
+  it("disables persisted desktop lyrics when the desktop window closes", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+    localStorage.setItem(appSettingsKey, JSON.stringify({ ...defaultStoredSettings(), desktopLyricsEnabled: true }));
+
+    render(<App />);
+
+    await waitFor(() => expect(window.musicApi.showDesktopLyrics).toHaveBeenCalled());
+    act(() => {
+      desktopLyricsClosedHandler?.();
+    });
+
+    expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toMatchObject({ desktopLyricsEnabled: false });
+  });
+
   it("persists fullscreen lyrics font size and applies it to fullscreen lyrics", async () => {
     const trackWithLyrics = { ...track, lyricsPath: "/music/Wave Song.lrc", hasLyrics: true };
     localStorage.setItem("musicplayer:last-folder", rememberedFolder);
@@ -573,10 +700,11 @@ describe("App", () => {
     expect((fullscreenLyrics as HTMLElement).style.getPropertyValue("--fullscreen-lyrics-font-size")).toBe("48px");
   });
 
-  it("falls back to the default fullscreen lyrics font size when saved settings are invalid", () => {
+  it("falls back to the default fullscreen lyrics font size when saved settings are invalid", async () => {
     localStorage.setItem(appSettingsKey, JSON.stringify({ fullscreenLyricsFontSize: 72 }));
 
     render(<App />);
+    await waitFor(() => expect(window.musicApi.listSystemFonts).toHaveBeenCalled());
     fireEvent.click(screen.getByRole("button", { name: "设置" }));
 
     expect((screen.getByLabelText("全屏歌词字号") as HTMLInputElement).value).toBe("36");
@@ -603,4 +731,14 @@ function makeTrack(id: string, title: string, artist: string, album: string, fol
 
 function playbackStateWriteCount(spy: ReturnType<typeof vi.spyOn>) {
   return spy.mock.calls.filter(([key]) => key === playbackStateKey).length;
+}
+
+function defaultStoredSettings() {
+  return {
+    fullscreenLyricsFontFamily: "",
+    fullscreenLyricsFontSize: 36,
+    desktopLyricsEnabled: false,
+    desktopLyricsFontFamily: "",
+    desktopLyricsFontSize: 28
+  };
 }

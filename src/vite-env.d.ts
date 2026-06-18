@@ -11,7 +11,7 @@ import type {
   UpdateTrackMetadataResult
 } from "./shared/types";
 
-export type MenuCommand = "choose-folder" | "rescan-library";
+export type MenuCommand = "choose-folder" | "rescan-library" | "open-settings";
 
 declare global {
   interface Window {

@@ -7,7 +7,7 @@ import type {
   TrackMetadataUpdate
 } from "../src/shared/types.js";
 
-type MenuCommand = "choose-folder" | "rescan-library";
+type MenuCommand = "choose-folder" | "rescan-library" | "open-settings";
 
 contextBridge.exposeInMainWorld("musicApi", {
   chooseMusicFolder: (): Promise<ScanResult | null> => ipcRenderer.invoke("library:choose-folder"),

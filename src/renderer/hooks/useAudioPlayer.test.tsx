@@ -40,6 +40,13 @@ beforeEach(() => {
     updateTrackMetadata: vi.fn(),
     trashTrackLyrics: vi.fn(),
     trashTrackFiles: vi.fn(),
+    listSystemFonts: vi.fn(),
+    showDesktopLyrics: vi.fn(),
+    closeDesktopLyrics: vi.fn(),
+    updateDesktopLyrics: vi.fn(),
+    openMainSettingsFromDesktopLyrics: vi.fn(),
+    onDesktopLyricsUpdate: vi.fn(),
+    onDesktopLyricsClosed: vi.fn(),
     onScanProgress: vi.fn(),
     onMenuCommand: vi.fn()
   };

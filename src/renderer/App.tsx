@@ -14,6 +14,7 @@ import { TrackContextMenu } from "./components/TrackContextMenu";
 import { getParentFolderPath, getTracksAtFolderLevel } from "./folderBrowser";
 import { useAudioPlayer } from "./hooks/useAudioPlayer";
 import type { LibraryCategory } from "./libraryCategories";
+import { buildDesktopLyricsPayload } from "./lyrics";
 
 const LAST_FOLDER_STORAGE_KEY = "musicplayer:last-folder";
 const LIBRARY_CACHE_STORAGE_KEY = "musicplayer:library-cache";
@@ -42,6 +43,7 @@ export function App() {
   const [activeCategory, setActiveCategory] = useState<LibraryCategory>("songs");
   const [activeView, setActiveView] = useState<AppView>("library");
   const [appSettings, setAppSettings] = useState<AppSettings>(() => readAppSettings());
+  const [availableFontFamilies, setAvailableFontFamilies] = useState<string[]>([""]);
   const [cacheStatus, setCacheStatus] = useState<string | null>(null);
   const [cacheError, setCacheError] = useState<string | null>(null);
   const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(null);
@@ -127,6 +129,79 @@ export function App() {
   const playlistQueueKey = useMemo(() => playlistTrackIds.join("\u0000"), [playlistTrackIds]);
 
   const player = useAudioPlayer(playlistTracks);
+
+  const commitAppSettings = useCallback((updater: (currentSettings: AppSettings) => AppSettings) => {
+    setAppSettings((currentSettings) => {
+      const nextSettings = normalizeAppSettings(updater(currentSettings));
+      try {
+        writeAppSettings(nextSettings);
+      } catch {
+        setAppError("无法保存设置。");
+      }
+      return nextSettings;
+    });
+  }, []);
+
+  const changeFullscreenLyricsFontFamily = useCallback(
+    (fontFamily: string) => {
+      commitAppSettings((currentSettings) => ({ ...currentSettings, fullscreenLyricsFontFamily: fontFamily }));
+    },
+    [commitAppSettings]
+  );
+
+  const changeFullscreenLyricsFontSize = useCallback(
+    (fontSize: number) => {
+      commitAppSettings((currentSettings) => ({ ...currentSettings, fullscreenLyricsFontSize: fontSize }));
+    },
+    [commitAppSettings]
+  );
+
+  const changeDesktopLyricsEnabled = useCallback(
+    (enabled: boolean) => {
+      commitAppSettings((currentSettings) => ({ ...currentSettings, desktopLyricsEnabled: enabled }));
+    },
+    [commitAppSettings]
+  );
+
+  const changeDesktopLyricsFontFamily = useCallback(
+    (fontFamily: string) => {
+      commitAppSettings((currentSettings) => ({ ...currentSettings, desktopLyricsFontFamily: fontFamily }));
+    },
+    [commitAppSettings]
+  );
+
+  const changeDesktopLyricsFontSize = useCallback(
+    (fontSize: number) => {
+      commitAppSettings((currentSettings) => ({ ...currentSettings, desktopLyricsFontSize: fontSize }));
+    },
+    [commitAppSettings]
+  );
+
+  const openSettings = useCallback(() => {
+    setActiveView("settings");
+    setCacheStatus(null);
+    setCacheError(null);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void window.musicApi
+      .listSystemFonts()
+      .then((fontFamilies) => {
+        if (!cancelled) {
+          setAvailableFontFamilies(fontFamilies.length > 0 ? fontFamilies : [""]);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAvailableFontFamilies(["", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "LXGW WenKai", "Arial", "Helvetica"]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!pendingPlaybackRestore) {
@@ -245,8 +320,11 @@ export function App() {
       if (command === "rescan-library") {
         void rescan();
       }
+      if (command === "open-settings") {
+        openSettings();
+      }
     });
-  }, [chooseFolder, rescan]);
+  }, [chooseFolder, openSettings, rescan]);
 
   useEffect(() => {
     const rememberedFolderPath = localStorage.getItem(LAST_FOLDER_STORAGE_KEY);
@@ -332,18 +410,60 @@ export function App() {
     };
   }, [player.currentTrack]);
 
+  const desktopLyricsPayload = useMemo(
+    () =>
+      buildDesktopLyricsPayload({
+        track: player.currentTrack,
+        lyrics,
+        isLyricsLoading,
+        currentTime: player.currentTime,
+        fontFamily: appSettings.desktopLyricsFontFamily,
+        fontSize: appSettings.desktopLyricsFontSize
+      }),
+    [
+      appSettings.desktopLyricsFontFamily,
+      appSettings.desktopLyricsFontSize,
+      isLyricsLoading,
+      lyrics,
+      player.currentTime,
+      player.currentTrack
+    ]
+  );
+
+  useEffect(() => {
+    if (!appSettings.desktopLyricsEnabled) {
+      void window.musicApi.closeDesktopLyrics();
+      return;
+    }
+
+    void window.musicApi.showDesktopLyrics().catch(() => {
+      setAppError("无法打开桌面歌词。");
+      commitAppSettings((currentSettings) => ({ ...currentSettings, desktopLyricsEnabled: false }));
+    });
+  }, [appSettings.desktopLyricsEnabled, commitAppSettings]);
+
+  useEffect(() => {
+    if (!appSettings.desktopLyricsEnabled) {
+      return;
+    }
+
+    void window.musicApi.updateDesktopLyrics(desktopLyricsPayload).catch(() => {
+      setAppError("无法更新桌面歌词。");
+    });
+  }, [appSettings.desktopLyricsEnabled, desktopLyricsPayload]);
+
+  useEffect(() => {
+    return window.musicApi.onDesktopLyricsClosed(() => {
+      commitAppSettings((currentSettings) => ({ ...currentSettings, desktopLyricsEnabled: false }));
+    });
+  }, [commitAppSettings]);
+
   const changeCategory = useCallback((category: LibraryCategory) => {
     setActiveView("library");
     setActiveCategory(category);
     if (category !== "folders") {
       setSelectedFolderPath(null);
     }
-  }, []);
-
-  const openSettings = useCallback(() => {
-    setActiveView("settings");
-    setCacheStatus(null);
-    setCacheError(null);
   }, []);
 
   const clearLibraryCache = useCallback(() => {
@@ -354,16 +474,6 @@ export function App() {
       setCacheStatus("音乐库缓存已清除。");
     } catch {
       setCacheError("无法清除音乐库缓存。");
-    }
-  }, []);
-
-  const changeFullscreenLyricsFontSize = useCallback((fontSize: number) => {
-    const nextSettings = normalizeAppSettings({ fullscreenLyricsFontSize: fontSize });
-    setAppSettings(nextSettings);
-    try {
-      writeAppSettings(nextSettings);
-    } catch {
-      setAppError("无法保存设置。");
     }
   }, []);
 
@@ -598,13 +708,22 @@ export function App() {
           <SettingsPage
             folderPath={folderPath}
             isScanning={isScanning}
+            availableFontFamilies={availableFontFamilies}
+            fullscreenLyricsFontFamily={appSettings.fullscreenLyricsFontFamily}
             fullscreenLyricsFontSize={appSettings.fullscreenLyricsFontSize}
+            desktopLyricsEnabled={appSettings.desktopLyricsEnabled}
+            desktopLyricsFontFamily={appSettings.desktopLyricsFontFamily}
+            desktopLyricsFontSize={appSettings.desktopLyricsFontSize}
             cacheStatus={cacheStatus}
             cacheError={cacheError}
             onChooseFolder={chooseFolder}
             onRescanLibrary={rescan}
             onClearLibraryCache={clearLibraryCache}
+            onFullscreenLyricsFontFamilyChange={changeFullscreenLyricsFontFamily}
             onFullscreenLyricsFontSizeChange={changeFullscreenLyricsFontSize}
+            onDesktopLyricsEnabledChange={changeDesktopLyricsEnabled}
+            onDesktopLyricsFontFamilyChange={changeDesktopLyricsFontFamily}
+            onDesktopLyricsFontSizeChange={changeDesktopLyricsFontSize}
           />
         ) : tracks.length === 0 ? (
           <EmptyState onChooseFolder={chooseFolder} isScanning={isScanning} />
@@ -641,6 +760,7 @@ export function App() {
           lyrics={lyrics}
           isLyricsLoading={isLyricsLoading}
           currentTime={player.currentTime}
+          fullscreenLyricsFontFamily={appSettings.fullscreenLyricsFontFamily}
           fullscreenLyricsFontSize={appSettings.fullscreenLyricsFontSize}
           onClose={() => setIsFullscreenLyricsOpen(false)}
         />
