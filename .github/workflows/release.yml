@@ -40,20 +40,26 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - name: Linux
+            os: ubuntu-latest
+            script: npm run dist:linux
+            artifact_name: linux-installers
+            artifact_path: |
+              release/*.AppImage
+              release/*.deb
+              release/*.rpm
           - name: macOS
             os: macos-latest
             script: npm run dist:mac
             artifact_name: macos-installers
             artifact_path: |
               release/*.dmg
-              release/*-mac-*.zip
           - name: Windows
             os: windows-latest
             script: npm run dist:win
             artifact_name: windows-installers
             artifact_path: |
               release/*.exe
-              release/*-win-*.zip
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
     steps:
@@ -68,6 +74,12 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Install Linux packaging tools
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rpm
 
       - name: Build installer
         run: ${{ matrix.script }}

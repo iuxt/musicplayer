@@ -10,8 +10,9 @@
     "build:electron": "node scripts/clean-dist-electron.mjs && tsc -p tsconfig.node.json",
     "build": "npm run build:electron && tsc -b && vite build",
     "build:mac": "node scripts/build-macos-app.mjs",
-    "dist:mac": "npm run build && electron-builder --mac dmg zip --publish never",
-    "dist:win": "npm run build && electron-builder --win nsis zip --publish never",
+    "dist:mac": "npm run build && electron-builder --mac dmg --publish never",
+    "dist:linux": "npm run build && electron-builder --linux AppImage deb rpm --x64 --publish never",
+    "dist:win": "npm run build && electron-builder --win nsis --x64 --publish never",
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.node.json --noEmit && tsc -b --noEmit",
@@ -64,20 +65,36 @@
       "icon": "build/app-icon.icns",
       "identity": null,
       "target": [
-        "dmg",
-        "zip"
+        "dmg"
+      ]
+    },
+    "linux": {
+      "maintainer": "Musicplayer Maintainers <maintainers@musicplayer.local>",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "rpm",
+          "arch": [
+            "x64"
+          ]
+        }
       ]
     },
     "win": {
       "target": [
         {
           "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "zip",
           "arch": [
             "x64"
           ]

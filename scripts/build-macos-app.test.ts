@@ -33,4 +33,11 @@ describe("build-macos-app helpers", () => {
 
     expect(options.icon).toBe(path.join("/repo", "build", "app-icon.icns"));
   });
+
+  it("suppresses optional macOS .icon format warnings during local install packaging", () => {
+    const paths = getBuildPaths("/repo", "arm64", "/tmp/musicplayer-build");
+    const options = getPackagerOptions("/repo", paths, "arm64");
+
+    expect(options.quiet).toBe(true);
+  });
 });

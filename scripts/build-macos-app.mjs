@@ -48,6 +48,7 @@ export function getPackagerOptions(projectRoot, paths, arch) {
     overwrite: true,
     asar: true,
     prune: true,
+    quiet: true,
     icon: paths.iconPath,
     appBundleId: "musicplayer.app",
     appCategoryType: "public.app-category.music",
