@@ -5,8 +5,8 @@
       <stop offset="1" stop-color="#ff7a59" />
     </linearGradient>
   </defs>
-  <rect width="1024" height="1024" rx="230" fill="url(#appIconGradient)" />
-  <svg x="232" y="232" width="560" height="560" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="96" y="96" width="832" height="832" rx="190" fill="url(#appIconGradient)" />
+  <svg x="290" y="290" width="444" height="444" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
     <circle cx="8" cy="18" r="4" />
     <path d="M12 18V2l7 4" />
   </svg>
