@@ -56,6 +56,7 @@ beforeEach(() => {
     showDesktopLyrics: vi.fn(async () => undefined),
     closeDesktopLyrics: vi.fn(async () => undefined),
     updateDesktopLyrics: vi.fn(async () => undefined),
+    resizeDesktopLyrics: vi.fn(async () => undefined),
     openMainSettingsFromDesktopLyrics: vi.fn(async () => undefined),
     onDesktopLyricsUpdate: vi.fn(() => () => undefined),
     onDesktopLyricsClosed: vi.fn((callback) => {

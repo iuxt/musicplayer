@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
+import { describe, expect, it } from "vitest";
 import type { DesktopLyricsPayload } from "../../shared/types";
 import { DesktopLyrics } from "./DesktopLyrics";
 
@@ -16,8 +16,6 @@ describe("DesktopLyrics", () => {
           fontFamily: "LXGW WenKai",
           fontSize: 30
         }}
-        onClose={() => undefined}
-        onOpenSettings={() => undefined}
       />
     );
 
@@ -28,16 +26,11 @@ describe("DesktopLyrics", () => {
     expect((surface as HTMLElement).style.getPropertyValue("--desktop-lyrics-font-size")).toBe("30px");
   });
 
-  it("calls close and settings callbacks", () => {
-    const onClose = vi.fn();
-    const onOpenSettings = vi.fn();
+  it("renders only lyric text without visible window controls", () => {
+    render(<DesktopLyrics payload={makePayload()} />);
 
-    render(<DesktopLyrics payload={makePayload()} onClose={onClose} onOpenSettings={onOpenSettings} />);
-    fireEvent.click(screen.getByRole("button", { name: "关闭桌面歌词" }));
-    fireEvent.click(screen.getByRole("button", { name: "打开歌词设置" }));
-
-    expect(onClose).toHaveBeenCalled();
-    expect(onOpenSettings).toHaveBeenCalled();
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.getByText("当前歌词").closest(".desktop-lyrics-text")).toBeTruthy();
   });
 });
 

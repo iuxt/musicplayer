@@ -1,4 +1,14 @@
-import { app, BrowserWindow, dialog, ipcMain, Menu, shell, type MenuItemConstructorOptions, type OpenDialogOptions } from "electron";
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  Menu,
+  screen,
+  shell,
+  type MenuItemConstructorOptions,
+  type OpenDialogOptions
+} from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readLyricsFile, toMediaFileUrl, toOptionalFileUrl } from "../src/main/fileUrls.js";
@@ -15,6 +25,8 @@ const appDisplayName = "音乐播放器";
 let mainWindow: BrowserWindow | null = null;
 let desktopLyricsWindow: BrowserWindow | null = null;
 let latestDesktopLyricsPayload: DesktopLyricsPayload | null = null;
+const maxDesktopLyricsWidth = 960;
+const maxDesktopLyricsHeight = 240;
 
 app.setName(appDisplayName);
 
@@ -61,8 +73,8 @@ async function showDesktopLyricsWindow() {
   }
 
   desktopLyricsWindow = new BrowserWindow({
-    width: 720,
-    height: 130,
+    width: 420,
+    height: 92,
     resizable: false,
     frame: false,
     transparent: true,
@@ -86,6 +98,34 @@ async function showDesktopLyricsWindow() {
   if (latestDesktopLyricsPayload) {
     desktopLyricsWindow.webContents.send("desktop-lyrics:update", latestDesktopLyricsPayload);
   }
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function resizeDesktopLyricsWindow(width: number, height: number) {
+  if (!desktopLyricsWindow || desktopLyricsWindow.isDestroyed()) {
+    return;
+  }
+
+  if (!Number.isFinite(width) || !Number.isFinite(height)) {
+    return;
+  }
+
+  const currentBounds = desktopLyricsWindow.getBounds();
+  const workArea = screen.getDisplayMatching(currentBounds).workArea;
+  const targetWidth = clamp(Math.ceil(width), 1, Math.min(maxDesktopLyricsWidth, workArea.width));
+  const targetHeight = clamp(Math.ceil(height), 1, Math.min(maxDesktopLyricsHeight, workArea.height));
+  const targetX = clamp(currentBounds.x, workArea.x, workArea.x + workArea.width - targetWidth);
+  const targetY = clamp(currentBounds.y, workArea.y, workArea.y + workArea.height - targetHeight);
+
+  desktopLyricsWindow.setBounds({
+    x: targetX,
+    y: targetY,
+    width: targetWidth,
+    height: targetHeight
+  });
 }
 
 function closeDesktopLyricsWindow() {
@@ -209,6 +249,10 @@ function registerIpc() {
 
   ipcMain.handle("desktop-lyrics:update", (_event, payload: DesktopLyricsPayload) => {
     updateDesktopLyricsWindow(payload);
+  });
+
+  ipcMain.handle("desktop-lyrics:resize", (_event, width: number, height: number) => {
+    resizeDesktopLyricsWindow(width, height);
   });
 
   ipcMain.handle("desktop-lyrics:open-settings", () => {

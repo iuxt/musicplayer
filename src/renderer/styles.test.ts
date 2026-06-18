@@ -78,11 +78,23 @@ describe("renderer layout styles", () => {
     expect(rule(css, ".desktop-lyrics-shell")).toContain("font-family: var(--desktop-lyrics-font-family");
   });
 
-  it("makes desktop lyrics draggable while controls remain clickable", async () => {
+  it("makes only the desktop lyric text draggable", async () => {
     const css = await readStyles();
 
-    expect(rule(css, ".desktop-lyrics-shell")).toContain("-webkit-app-region: drag");
-    expect(rule(css, ".desktop-lyrics-control")).toContain("-webkit-app-region: no-drag");
+    expect(rule(css, ".desktop-lyrics-shell")).not.toContain("-webkit-app-region: drag");
+    expect(rule(css, ".desktop-lyrics-text")).toContain("-webkit-app-region: drag");
+    expect(rule(css, ".desktop-lyrics-controls")).toBe("");
+    expect(rule(css, ".desktop-lyrics-control")).toBe("");
+  });
+
+  it("shows desktop lyrics as text without a framed background", async () => {
+    const css = await readStyles();
+    const shell = rule(css, ".desktop-lyrics-shell");
+
+    expect(shell).toContain("background: transparent");
+    expect(shell).not.toContain("box-shadow");
+    expect(shell).not.toContain("backdrop-filter");
+    expect(shell).not.toContain("border-radius");
   });
 });
 

@@ -24,6 +24,8 @@ contextBridge.exposeInMainWorld("musicApi", {
   showDesktopLyrics: (): Promise<void> => ipcRenderer.invoke("desktop-lyrics:show"),
   closeDesktopLyrics: (): Promise<void> => ipcRenderer.invoke("desktop-lyrics:close"),
   updateDesktopLyrics: (payload: DesktopLyricsPayload): Promise<void> => ipcRenderer.invoke("desktop-lyrics:update", payload),
+  resizeDesktopLyrics: (width: number, height: number): Promise<void> =>
+    ipcRenderer.invoke("desktop-lyrics:resize", width, height),
   openMainSettingsFromDesktopLyrics: (): Promise<void> => ipcRenderer.invoke("desktop-lyrics:open-settings"),
   onDesktopLyricsUpdate: (callback: (payload: DesktopLyricsPayload) => void) => {
     const listener = (_event: IpcRendererEvent, payload: DesktopLyricsPayload) => callback(payload);

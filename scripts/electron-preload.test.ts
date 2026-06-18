@@ -23,6 +23,7 @@ describe("Electron preload packaging", () => {
     expect(preloadSource).toContain("showDesktopLyrics");
     expect(preloadSource).toContain("closeDesktopLyrics");
     expect(preloadSource).toContain("updateDesktopLyrics");
+    expect(preloadSource).toContain("resizeDesktopLyrics");
     expect(preloadSource).toContain("onDesktopLyricsUpdate");
     expect(preloadSource).toContain("onDesktopLyricsClosed");
     expect(preloadSource).toContain("openMainSettingsFromDesktopLyrics");

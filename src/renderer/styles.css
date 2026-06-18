@@ -16,6 +16,16 @@ body,
   height: 100%;
 }
 
+html.desktop-lyrics-window,
+html.desktop-lyrics-window body,
+html.desktop-lyrics-window #root {
+  width: max-content;
+  height: max-content;
+  min-width: 0;
+  overflow: visible;
+  background: transparent;
+}
+
 body {
   margin: 0;
   min-width: 320px;
@@ -429,11 +439,9 @@ button:disabled {
 .desktop-lyrics-preview {
   width: min(520px, 100%);
   padding: 16px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 18px;
   color: white;
-  background: rgba(14, 16, 20, 0.72);
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.18);
+  background: transparent;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.82), 0 0 18px rgba(0, 0, 0, 0.46);
 }
 
 .desktop-lyrics-preview p,
@@ -1123,53 +1131,30 @@ input[type="range"] {
 }
 
 .desktop-lyrics-shell {
-  width: 100vw;
-  height: 100vh;
-  display: grid;
-  align-content: center;
+  display: inline-grid;
   gap: 8px;
-  padding: 18px 22px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  border-radius: 18px;
+  max-width: 960px;
+  padding: 10px 14px;
   color: white;
-  background: rgba(14, 16, 20, 0.58);
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.32);
-  backdrop-filter: blur(18px);
+  background: transparent;
   font-family: var(--desktop-lyrics-font-family, ui-sans-serif, system-ui, sans-serif);
-  -webkit-app-region: drag;
-  overflow: hidden;
+  overflow: visible;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.82), 0 0 18px rgba(0, 0, 0, 0.46);
 }
 
-.desktop-lyrics-controls {
-  position: fixed;
-  top: 8px;
-  right: 10px;
-  display: flex;
-  gap: 6px;
-  opacity: 0;
-  transition: opacity 160ms ease;
-  -webkit-app-region: no-drag;
-}
-
-.desktop-lyrics-shell:hover .desktop-lyrics-controls {
-  opacity: 1;
-}
-
-.desktop-lyrics-control {
-  width: 24px;
-  height: 24px;
+.desktop-lyrics-text {
   display: grid;
-  place-items: center;
-  border: 0;
-  border-radius: 999px;
-  color: white;
-  background: rgba(255, 255, 255, 0.16);
-  -webkit-app-region: no-drag;
+  gap: 8px;
+  max-width: inherit;
+  cursor: move;
+  user-select: none;
+  -webkit-app-region: drag;
 }
 
 .desktop-lyrics-current,
 .desktop-lyrics-next {
   margin: 0;
+  max-width: inherit;
   line-height: 1.18;
   overflow: hidden;
   text-overflow: ellipsis;

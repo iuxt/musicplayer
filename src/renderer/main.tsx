@@ -7,6 +7,7 @@ import "./styles.css";
 const root = createRoot(document.getElementById("root")!);
 const params = new URLSearchParams(window.location.search);
 const isDesktopLyricsWindow = params.get("window") === "desktop-lyrics";
+document.documentElement.classList.toggle("desktop-lyrics-window", isDesktopLyricsWindow);
 
 root.render(
   <React.StrictMode>

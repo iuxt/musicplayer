@@ -44,6 +44,7 @@ beforeEach(() => {
     showDesktopLyrics: vi.fn(),
     closeDesktopLyrics: vi.fn(),
     updateDesktopLyrics: vi.fn(),
+    resizeDesktopLyrics: vi.fn(),
     openMainSettingsFromDesktopLyrics: vi.fn(),
     onDesktopLyricsUpdate: vi.fn(),
     onDesktopLyricsClosed: vi.fn(),

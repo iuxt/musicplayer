@@ -29,6 +29,7 @@ declare global {
       showDesktopLyrics: () => Promise<void>;
       closeDesktopLyrics: () => Promise<void>;
       updateDesktopLyrics: (payload: DesktopLyricsPayload) => Promise<void>;
+      resizeDesktopLyrics: (width: number, height: number) => Promise<void>;
       openMainSettingsFromDesktopLyrics: () => Promise<void>;
       onDesktopLyricsUpdate: (callback: (payload: DesktopLyricsPayload) => void) => () => void;
       onDesktopLyricsClosed: (callback: () => void) => () => void;

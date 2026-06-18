@@ -11,6 +11,7 @@ describe("Electron desktop lyrics window", () => {
     expect(mainSource).toContain("desktop-lyrics:show");
     expect(mainSource).toContain("desktop-lyrics:close");
     expect(mainSource).toContain("desktop-lyrics:update");
+    expect(mainSource).toContain("desktop-lyrics:resize");
     expect(mainSource).toContain("desktop-lyrics:open-settings");
     expect(mainSource).toContain("fonts:list-system");
   });
