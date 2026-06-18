@@ -69,6 +69,21 @@ describe("renderer layout styles", () => {
     expect(mediaRule(css, "@media (max-width: 980px)", ".fullscreen-lyrics")).toContain("align-items: start");
     expect(mediaRule(css, "@media (max-width: 980px)", ".fullscreen-lyrics")).toContain("grid-auto-rows: max-content");
   });
+
+  it("scopes lyric font families through CSS variables", async () => {
+    const css = await readStyles();
+
+    expect(rule(css, ".fullscreen-lyric-line")).toContain("font-family: var(--fullscreen-lyrics-font-family");
+    expect(rule(css, ".fullscreen-lyrics-empty")).toContain("font-family: var(--fullscreen-lyrics-font-family");
+    expect(rule(css, ".desktop-lyrics-shell")).toContain("font-family: var(--desktop-lyrics-font-family");
+  });
+
+  it("makes desktop lyrics draggable while controls remain clickable", async () => {
+    const css = await readStyles();
+
+    expect(rule(css, ".desktop-lyrics-shell")).toContain("-webkit-app-region: drag");
+    expect(rule(css, ".desktop-lyrics-control")).toContain("-webkit-app-region: no-drag");
+  });
 });
 
 async function readStyles() {
