@@ -114,6 +114,50 @@ describe("LibraryList", () => {
     expect(artwork.getAttribute("src")).toBe("file:///music/album-cover.jpg");
     expect(getArtworkUrl).toHaveBeenCalledWith("/music/album-cover.jpg");
   });
+
+  it("shows an artist icon thumbnail before artist group titles", () => {
+    render(
+      <LibraryList
+        category="artists"
+        tracks={[makeTrack(1, { artist: "Artist One" })]}
+        currentTrack={null}
+        search=""
+        selectedFolderPath={null}
+        onSearchChange={() => undefined}
+        onSelectTrack={() => undefined}
+        onOpenFolder={() => undefined}
+        onBackToFolders={() => undefined}
+        onTrackContextMenu={() => undefined}
+      />
+    );
+
+    const artistIcon = screen.getByRole("img", { name: "歌手" });
+
+    expect(artistIcon.classList.contains("category-icon-thumbnail")).toBe(true);
+    expect(screen.getByRole("button", { name: /Artist One.*1 首歌曲.*播放/ })).toBeTruthy();
+  });
+
+  it("shows a folder icon thumbnail before folder titles", () => {
+    render(
+      <LibraryList
+        category="folders"
+        tracks={[makeTrack(1, { folderPath: "Artist One/Album One" })]}
+        currentTrack={null}
+        search=""
+        selectedFolderPath={null}
+        onSearchChange={() => undefined}
+        onSelectTrack={() => undefined}
+        onOpenFolder={() => undefined}
+        onBackToFolders={() => undefined}
+        onTrackContextMenu={() => undefined}
+      />
+    );
+
+    const folderIcon = screen.getByRole("img", { name: "文件夹" });
+
+    expect(folderIcon.classList.contains("category-icon-thumbnail")).toBe(true);
+    expect(screen.getByRole("button", { name: /Artist One.*1 首歌曲.*打开/ })).toBeTruthy();
+  });
 });
 
 function makeTrack(index: number, overrides: Partial<Track> = {}): Track {
