@@ -40,13 +40,21 @@ describe("Electron preload packaging", () => {
     const mainSource = await readFile(path.join(process.cwd(), "electron/main.ts"), "utf8");
 
     expect(preloadSource).toContain("setSystemMediaShortcutsEnabled");
+    expect(preloadSource).toContain("ensureSystemMediaShortcutsPermission");
     expect(preloadSource).toContain("onMediaKeyCommand");
+    expect(preloadSource).toContain("playback:ensure-system-media-shortcuts-permission");
     expect(preloadSource).toContain("playback:set-system-media-shortcuts-enabled");
     expect(preloadSource).toContain("playback:media-key-command");
+    expect(mainSource).toContain("systemPreferences");
+    expect(mainSource).toContain("isTrustedAccessibilityClient(false)");
+    expect(mainSource).toContain("showMessageBox");
+    expect(mainSource).toContain("系统设置 > 隐私与安全 > 无障碍");
+    expect(mainSource).not.toContain("隐私与安全性 > 辅助功能");
     expect(mainSource).toContain("globalShortcut");
     expect(mainSource).toContain("MediaPlayPause");
     expect(mainSource).toContain("MediaNextTrack");
     expect(mainSource).toContain("MediaPreviousTrack");
+    expect(mainSource).toContain("playback:ensure-system-media-shortcuts-permission");
     expect(mainSource).toContain("playback:set-system-media-shortcuts-enabled");
     expect(mainSource).toContain("playback:media-key-command");
   });

@@ -7,6 +7,7 @@ import {
   Menu,
   screen,
   shell,
+  systemPreferences,
   type MenuItemConstructorOptions,
   type OpenDialogOptions
 } from "electron";
@@ -33,6 +34,10 @@ app.setName(appDisplayName);
 
 type MenuCommand = "choose-folder" | "rescan-library" | "open-settings";
 type MediaKeyCommand = "play-pause" | "next" | "previous";
+type SystemMediaShortcutsResult = { ok: true } | { ok: false; failedCommands: MediaKeyCommand[] };
+type SystemMediaShortcutsPermissionResult =
+  | { ok: true }
+  | { ok: false; reason: "accessibility-permission-denied" };
 
 const systemMediaShortcuts: Array<{ accelerator: string; command: MediaKeyCommand }> = [
   { accelerator: "MediaPlayPause", command: "play-pause" },
@@ -59,21 +64,45 @@ function unregisterSystemMediaShortcuts() {
   }
 }
 
-function setSystemMediaShortcutsEnabled(enabled: boolean) {
+function setSystemMediaShortcutsEnabled(enabled: boolean): SystemMediaShortcutsResult {
   unregisterSystemMediaShortcuts();
   if (!enabled) {
-    return true;
+    return { ok: true };
   }
 
-  const registeredAll = systemMediaShortcuts.every((shortcut) =>
-    globalShortcut.register(shortcut.accelerator, () => sendMediaKeyCommand(shortcut.command))
-  );
+  const failedCommands = systemMediaShortcuts
+    .filter((shortcut) => !globalShortcut.register(shortcut.accelerator, () => sendMediaKeyCommand(shortcut.command)))
+    .map((shortcut) => shortcut.command);
 
-  if (!registeredAll) {
+  if (failedCommands.length > 0) {
     unregisterSystemMediaShortcuts();
+    return { ok: false, failedCommands };
   }
 
-  return registeredAll;
+  return { ok: true };
+}
+
+async function ensureSystemMediaShortcutsPermission(): Promise<SystemMediaShortcutsPermissionResult> {
+  if (process.platform !== "darwin" || systemPreferences.isTrustedAccessibilityClient(false)) {
+    return { ok: true };
+  }
+
+  const options = {
+    type: "warning" as const,
+    buttons: ["知道了"],
+    defaultId: 0,
+    title: "需要辅助功能权限",
+    message: "系统媒体快捷键需要辅助功能权限。",
+    detail: "请在系统设置 > 隐私与安全 > 无障碍中允许 Electron 或音乐播放器，然后重新开启此开关。"
+  };
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    await dialog.showMessageBox(mainWindow, options);
+  } else {
+    await dialog.showMessageBox(options);
+  }
+
+  return { ok: false, reason: "accessibility-permission-denied" };
 }
 
 function getRendererUrl(windowMode?: "desktop-lyrics") {
@@ -306,6 +335,10 @@ function registerIpc() {
 
   ipcMain.handle("playback:set-system-media-shortcuts-enabled", (_event, enabled: boolean) => {
     return setSystemMediaShortcutsEnabled(Boolean(enabled));
+  });
+
+  ipcMain.handle("playback:ensure-system-media-shortcuts-permission", () => {
+    return ensureSystemMediaShortcutsPermission();
   });
 }
 

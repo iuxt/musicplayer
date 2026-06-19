@@ -13,6 +13,10 @@ import type {
 
 export type MenuCommand = "choose-folder" | "rescan-library" | "open-settings";
 export type MediaKeyCommand = "play-pause" | "next" | "previous";
+export type SystemMediaShortcutsResult = { ok: true } | { ok: false; failedCommands: MediaKeyCommand[] };
+export type SystemMediaShortcutsPermissionResult =
+  | { ok: true }
+  | { ok: false; reason: "accessibility-permission-denied" };
 
 declare global {
   interface Window {
@@ -32,7 +36,8 @@ declare global {
       updateDesktopLyrics: (payload: DesktopLyricsPayload) => Promise<void>;
       resizeDesktopLyrics: (width: number, height: number) => Promise<void>;
       openMainSettingsFromDesktopLyrics: () => Promise<void>;
-      setSystemMediaShortcutsEnabled: (enabled: boolean) => Promise<boolean>;
+      ensureSystemMediaShortcutsPermission: () => Promise<SystemMediaShortcutsPermissionResult>;
+      setSystemMediaShortcutsEnabled: (enabled: boolean) => Promise<SystemMediaShortcutsResult>;
       onDesktopLyricsUpdate: (callback: (payload: DesktopLyricsPayload) => void) => () => void;
       onDesktopLyricsClosed: (callback: () => void) => () => void;
       onScanProgress: (callback: (progress: ScanProgress) => void) => () => void;

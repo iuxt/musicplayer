@@ -32,6 +32,7 @@ type PlaybackState = {
 };
 
 type AppView = "library" | "settings";
+type MediaKeyCommand = "play-pause" | "next" | "previous";
 
 export function App() {
   const [folderPath, setFolderPath] = useState<string | null>(null);
@@ -158,7 +159,23 @@ export function App() {
 
   const changeSystemMediaShortcutsEnabled = useCallback(
     (enabled: boolean) => {
-      commitAppSettings((currentSettings) => ({ ...currentSettings, systemMediaShortcutsEnabled: enabled }));
+      if (!enabled) {
+        commitAppSettings((currentSettings) => ({ ...currentSettings, systemMediaShortcutsEnabled: false }));
+        return;
+      }
+
+      void window.musicApi
+        .ensureSystemMediaShortcutsPermission()
+        .then((result) => {
+          if (!result.ok) {
+            return;
+          }
+
+          commitAppSettings((currentSettings) => ({ ...currentSettings, systemMediaShortcutsEnabled: true }));
+        })
+        .catch(() => {
+          setAppError("无法检查系统媒体快捷键权限。");
+        });
     },
     [commitAppSettings]
   );
@@ -323,12 +340,12 @@ export function App() {
     let cancelled = false;
     void window.musicApi
       .setSystemMediaShortcutsEnabled(appSettings.systemMediaShortcutsEnabled)
-      .then((registered) => {
-        if (cancelled || !appSettings.systemMediaShortcutsEnabled || registered) {
+      .then((result) => {
+        if (cancelled || !appSettings.systemMediaShortcutsEnabled || result.ok) {
           return;
         }
 
-        setAppError("无法启用系统媒体快捷键。");
+        setAppError(`无法启用系统媒体快捷键：${formatMediaKeyCommandLabels(result.failedCommands)}注册失败。`);
         commitAppSettings((currentSettings) => ({ ...currentSettings, systemMediaShortcutsEnabled: false }));
       })
       .catch(() => {
@@ -920,6 +937,23 @@ function localizePlaylistLabel(label: string) {
     return DEFAULT_FOLDER_PLAYLIST_LABEL;
   }
   return label || DEFAULT_PLAYLIST_LABEL;
+}
+
+function formatMediaKeyCommandLabels(commands: MediaKeyCommand[]) {
+  const labels = commands.map((command) => mediaKeyCommandLabel(command));
+  return labels.length > 0 ? labels.join("、") : "系统媒体快捷键";
+}
+
+function mediaKeyCommandLabel(command: MediaKeyCommand) {
+  if (command === "play-pause") {
+    return "播放/暂停";
+  }
+
+  if (command === "next") {
+    return "下一首";
+  }
+
+  return "上一首";
 }
 
 function removePlaybackStateForTrack(trackId: string) {

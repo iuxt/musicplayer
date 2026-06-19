@@ -60,7 +60,8 @@ beforeEach(() => {
     updateDesktopLyrics: vi.fn(async () => undefined),
     resizeDesktopLyrics: vi.fn(async () => undefined),
     openMainSettingsFromDesktopLyrics: vi.fn(async () => undefined),
-    setSystemMediaShortcutsEnabled: vi.fn(async () => true),
+    ensureSystemMediaShortcutsPermission: vi.fn(async () => ({ ok: true as const })),
+    setSystemMediaShortcutsEnabled: vi.fn(async () => ({ ok: true as const })),
     onDesktopLyricsUpdate: vi.fn(() => () => undefined),
     onDesktopLyricsClosed: vi.fn((callback) => {
       desktopLyricsClosedHandler = callback;
@@ -694,6 +695,47 @@ describe("App", () => {
     expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toMatchObject({
       systemMediaShortcutsEnabled: false
     });
+  });
+
+  it("shows which system media shortcuts failed to register", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+    localStorage.setItem(appSettingsKey, JSON.stringify({ ...defaultStoredSettings(), systemMediaShortcutsEnabled: true }));
+    window.musicApi.setSystemMediaShortcutsEnabled = vi.fn(async () => ({
+      ok: false as const,
+      failedCommands: ["play-pause" as const, "next" as const]
+    }));
+
+    render(<App />);
+
+    expect(await screen.findByText("无法启用系统媒体快捷键：播放/暂停、下一首注册失败。")).toBeTruthy();
+    expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toMatchObject({
+      systemMediaShortcutsEnabled: false
+    });
+  });
+
+  it("checks accessibility permission only when enabling system media shortcuts", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+    window.musicApi.ensureSystemMediaShortcutsPermission = vi.fn(async () => ({
+      ok: false as const,
+      reason: "accessibility-permission-denied" as const
+    }));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    expect(window.musicApi.ensureSystemMediaShortcutsPermission).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    fireEvent.click(screen.getByLabelText("系统媒体快捷键"));
+
+    await waitFor(() => expect(window.musicApi.ensureSystemMediaShortcutsPermission).toHaveBeenCalledTimes(1));
+    expect(window.musicApi.setSystemMediaShortcutsEnabled).not.toHaveBeenCalledWith(true);
+    expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).not.toMatchObject({
+      systemMediaShortcutsEnabled: true
+    });
+    expect((screen.getByLabelText("系统媒体快捷键") as HTMLInputElement).checked).toBe(false);
   });
 
   it("handles system media key commands through the audio player", async () => {

@@ -9,6 +9,10 @@ import type {
 
 type MenuCommand = "choose-folder" | "rescan-library" | "open-settings";
 type MediaKeyCommand = "play-pause" | "next" | "previous";
+type SystemMediaShortcutsResult = { ok: true } | { ok: false; failedCommands: MediaKeyCommand[] };
+type SystemMediaShortcutsPermissionResult =
+  | { ok: true }
+  | { ok: false; reason: "accessibility-permission-denied" };
 
 contextBridge.exposeInMainWorld("musicApi", {
   chooseMusicFolder: (): Promise<ScanResult | null> => ipcRenderer.invoke("library:choose-folder"),
@@ -28,7 +32,9 @@ contextBridge.exposeInMainWorld("musicApi", {
   resizeDesktopLyrics: (width: number, height: number): Promise<void> =>
     ipcRenderer.invoke("desktop-lyrics:resize", width, height),
   openMainSettingsFromDesktopLyrics: (): Promise<void> => ipcRenderer.invoke("desktop-lyrics:open-settings"),
-  setSystemMediaShortcutsEnabled: (enabled: boolean): Promise<boolean> =>
+  ensureSystemMediaShortcutsPermission: (): Promise<SystemMediaShortcutsPermissionResult> =>
+    ipcRenderer.invoke("playback:ensure-system-media-shortcuts-permission"),
+  setSystemMediaShortcutsEnabled: (enabled: boolean): Promise<SystemMediaShortcutsResult> =>
     ipcRenderer.invoke("playback:set-system-media-shortcuts-enabled", enabled),
   onDesktopLyricsUpdate: (callback: (payload: DesktopLyricsPayload) => void) => {
     const listener = (_event: IpcRendererEvent, payload: DesktopLyricsPayload) => callback(payload);
