@@ -23,7 +23,18 @@ describe("Electron desktop lyrics window", () => {
     expect(mainSource).toContain("frame: false");
     expect(mainSource).toContain("alwaysOnTop: true");
     expect(mainSource).toContain("skipTaskbar: true");
+    expect(mainSource).toContain("focusable: false");
+    expect(mainSource).toContain("showInactive()");
     expect(mainSource).toContain("window=desktop-lyrics");
     expect(mainSource).toContain("desktopLyricsWindow");
+  });
+
+  it("returns to the main window when the app is activated while desktop lyrics exists", async () => {
+    const mainSource = await readFile(path.join(process.cwd(), "electron/main.ts"), "utf8");
+
+    expect(mainSource).toContain("function activateMainWindow");
+    expect(mainSource).toContain("mainWindow.show()");
+    expect(mainSource).toContain("mainWindow.focus()");
+    expect(mainSource).toContain("app.on(\"activate\", () => {\n  void activateMainWindow();\n});");
   });
 });

@@ -64,8 +64,7 @@ async function loadRendererWindow(win: BrowserWindow, windowMode?: "desktop-lyri
 
 async function showDesktopLyricsWindow() {
   if (desktopLyricsWindow && !desktopLyricsWindow.isDestroyed()) {
-    desktopLyricsWindow.show();
-    desktopLyricsWindow.focus();
+    desktopLyricsWindow.showInactive();
     if (latestDesktopLyricsPayload) {
       desktopLyricsWindow.webContents.send("desktop-lyrics:update", latestDesktopLyricsPayload);
     }
@@ -80,6 +79,8 @@ async function showDesktopLyricsWindow() {
     transparent: true,
     alwaysOnTop: true,
     skipTaskbar: true,
+    focusable: false,
+    show: false,
     backgroundColor: "#00000000",
     hasShadow: false,
     webPreferences: {
@@ -95,6 +96,7 @@ async function showDesktopLyricsWindow() {
   });
 
   await loadRendererWindow(desktopLyricsWindow, "desktop-lyrics");
+  desktopLyricsWindow.showInactive();
   if (latestDesktopLyricsPayload) {
     desktopLyricsWindow.webContents.send("desktop-lyrics:update", latestDesktopLyricsPayload);
   }
@@ -292,6 +294,20 @@ async function createWindow() {
   }
 }
 
+async function activateMainWindow() {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    await createWindow();
+    return;
+  }
+
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+
+  mainWindow.show();
+  mainWindow.focus();
+}
+
 app.whenReady().then(() => {
   if (process.platform === "darwin") {
     app.dock?.setIcon(appIconPath);
@@ -309,7 +325,5 @@ app.on("window-all-closed", () => {
 });
 
 app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    void createWindow();
-  }
+  void activateMainWindow();
 });
