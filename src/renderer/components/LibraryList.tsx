@@ -1,4 +1,4 @@
-import { ChevronLeft, Disc3, Search } from "lucide-react";
+import { ChevronLeft, Disc3, Folder, Search, UserRound } from "lucide-react";
 import { memo, useEffect, useMemo, useState } from "react";
 import type { Track } from "../../shared/types";
 import { buildFolderBrowserRows } from "../folderBrowser";
@@ -98,6 +98,7 @@ export const LibraryList = memo(function LibraryList({
             row.type === "folder" ? (
               <button className="track-row category-row" onClick={() => onOpenFolder(row.path)} type="button">
                 <span className="track-index">{String(index + 1).padStart(2, "0")}</span>
+                <CategoryIconThumbnail type="folder" />
                 <span className="track-title">
                   <strong>{row.label}</strong>
                   <small>{row.detail}</small>
@@ -189,7 +190,11 @@ function GroupRow({
       type="button"
     >
       <span className="track-index">{String(index + 1).padStart(2, "0")}</span>
-      {isAlbum ? <ArtworkThumbnail alt={`${group.label} 封面`} artworkPath={artworkPath} /> : null}
+      {isAlbum ? (
+        <ArtworkThumbnail alt={`${group.label} 封面`} artworkPath={artworkPath} />
+      ) : (
+        <CategoryIconThumbnail type="artist" />
+      )}
       <span className="track-title">
         <strong>{group.label}</strong>
         <small>{group.detail}</small>
@@ -206,6 +211,17 @@ function ArtworkThumbnail({ alt, artworkPath }: { alt: string; artworkPath: stri
   return (
     <span className="track-artwork">
       {artworkUrl ? <img src={artworkUrl} alt={alt} /> : <Disc3 size={18} aria-hidden="true" />}
+    </span>
+  );
+}
+
+function CategoryIconThumbnail({ type }: { type: "artist" | "folder" }) {
+  const Icon = type === "artist" ? UserRound : Folder;
+  const label = type === "artist" ? "歌手" : "文件夹";
+
+  return (
+    <span className="track-artwork category-icon-thumbnail" role="img" aria-label={label}>
+      <Icon size={18} aria-hidden="true" />
     </span>
   );
 }

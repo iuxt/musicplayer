@@ -538,7 +538,7 @@ button:disabled {
 }
 
 .song-row,
-.album-row {
+.category-row {
   grid-template-columns: 44px 42px minmax(0, 1.4fr) minmax(120px, 0.8fr) 54px;
 }
 
@@ -564,6 +564,10 @@ button:disabled {
   color: rgba(255, 255, 255, 0.92);
   background: linear-gradient(145deg, #fb2440, #ff8a54 42%, #4f6df5);
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+}
+
+.category-icon-thumbnail {
+  color: rgba(255, 255, 255, 0.94);
 }
 
 .track-artwork img {
