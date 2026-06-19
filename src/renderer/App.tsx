@@ -156,6 +156,13 @@ export function App() {
     [commitAppSettings]
   );
 
+  const changeSystemMediaShortcutsEnabled = useCallback(
+    (enabled: boolean) => {
+      commitAppSettings((currentSettings) => ({ ...currentSettings, systemMediaShortcutsEnabled: enabled }));
+    },
+    [commitAppSettings]
+  );
+
   const changeDesktopLyricsEnabled = useCallback(
     (enabled: boolean) => {
       commitAppSettings((currentSettings) => ({ ...currentSettings, desktopLyricsEnabled: enabled }));
@@ -311,6 +318,45 @@ export function App() {
   useEffect(() => {
     return window.musicApi.onScanProgress(setScanProgress);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void window.musicApi
+      .setSystemMediaShortcutsEnabled(appSettings.systemMediaShortcutsEnabled)
+      .then((registered) => {
+        if (cancelled || !appSettings.systemMediaShortcutsEnabled || registered) {
+          return;
+        }
+
+        setAppError("无法启用系统媒体快捷键。");
+        commitAppSettings((currentSettings) => ({ ...currentSettings, systemMediaShortcutsEnabled: false }));
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setAppError("无法更新系统媒体快捷键。");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [appSettings.systemMediaShortcutsEnabled, commitAppSettings]);
+
+  useEffect(() => {
+    return window.musicApi.onMediaKeyCommand((command) => {
+      if (command === "play-pause") {
+        void player.playPause();
+        return;
+      }
+
+      if (command === "next") {
+        void player.next();
+        return;
+      }
+
+      void player.previous();
+    });
+  }, [player.next, player.playPause, player.previous]);
 
   useEffect(() => {
     return window.musicApi.onMenuCommand((command) => {
@@ -711,6 +757,7 @@ export function App() {
             availableFontFamilies={availableFontFamilies}
             fullscreenLyricsFontFamily={appSettings.fullscreenLyricsFontFamily}
             fullscreenLyricsFontSize={appSettings.fullscreenLyricsFontSize}
+            systemMediaShortcutsEnabled={appSettings.systemMediaShortcutsEnabled}
             desktopLyricsEnabled={appSettings.desktopLyricsEnabled}
             desktopLyricsFontFamily={appSettings.desktopLyricsFontFamily}
             desktopLyricsFontSize={appSettings.desktopLyricsFontSize}
@@ -721,6 +768,7 @@ export function App() {
             onClearLibraryCache={clearLibraryCache}
             onFullscreenLyricsFontFamilyChange={changeFullscreenLyricsFontFamily}
             onFullscreenLyricsFontSizeChange={changeFullscreenLyricsFontSize}
+            onSystemMediaShortcutsEnabledChange={changeSystemMediaShortcutsEnabled}
             onDesktopLyricsEnabledChange={changeDesktopLyricsEnabled}
             onDesktopLyricsFontFamilyChange={changeDesktopLyricsFontFamily}
             onDesktopLyricsFontSizeChange={changeDesktopLyricsFontSize}

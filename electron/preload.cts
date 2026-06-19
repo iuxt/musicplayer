@@ -8,6 +8,7 @@ import type {
 } from "../src/shared/types.js";
 
 type MenuCommand = "choose-folder" | "rescan-library" | "open-settings";
+type MediaKeyCommand = "play-pause" | "next" | "previous";
 
 contextBridge.exposeInMainWorld("musicApi", {
   chooseMusicFolder: (): Promise<ScanResult | null> => ipcRenderer.invoke("library:choose-folder"),
@@ -27,6 +28,8 @@ contextBridge.exposeInMainWorld("musicApi", {
   resizeDesktopLyrics: (width: number, height: number): Promise<void> =>
     ipcRenderer.invoke("desktop-lyrics:resize", width, height),
   openMainSettingsFromDesktopLyrics: (): Promise<void> => ipcRenderer.invoke("desktop-lyrics:open-settings"),
+  setSystemMediaShortcutsEnabled: (enabled: boolean): Promise<boolean> =>
+    ipcRenderer.invoke("playback:set-system-media-shortcuts-enabled", enabled),
   onDesktopLyricsUpdate: (callback: (payload: DesktopLyricsPayload) => void) => {
     const listener = (_event: IpcRendererEvent, payload: DesktopLyricsPayload) => callback(payload);
     ipcRenderer.on("desktop-lyrics:update", listener);
@@ -46,5 +49,10 @@ contextBridge.exposeInMainWorld("musicApi", {
     const listener = (_event: IpcRendererEvent, command: MenuCommand) => callback(command);
     ipcRenderer.on("library:menu-command", listener);
     return () => ipcRenderer.removeListener("library:menu-command", listener);
+  },
+  onMediaKeyCommand: (callback: (command: MediaKeyCommand) => void) => {
+    const listener = (_event: IpcRendererEvent, command: MediaKeyCommand) => callback(command);
+    ipcRenderer.on("playback:media-key-command", listener);
+    return () => ipcRenderer.removeListener("playback:media-key-command", listener);
   }
 });

@@ -37,6 +37,7 @@ beforeEach(() => {
     updateDesktopLyrics: vi.fn(async () => undefined),
     resizeDesktopLyrics: vi.fn(async () => undefined),
     openMainSettingsFromDesktopLyrics: vi.fn(async () => undefined),
+    setSystemMediaShortcutsEnabled: vi.fn(async () => true),
     onDesktopLyricsUpdate: vi.fn((callback) => {
       updateHandler = callback;
       return () => {
@@ -45,7 +46,8 @@ beforeEach(() => {
     }),
     onDesktopLyricsClosed: vi.fn(() => () => undefined),
     onScanProgress: vi.fn(() => () => undefined),
-    onMenuCommand: vi.fn(() => () => undefined)
+    onMenuCommand: vi.fn(() => () => undefined),
+    onMediaKeyCommand: vi.fn(() => () => undefined)
   };
 });
 

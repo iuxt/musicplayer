@@ -109,10 +109,45 @@ describe("appSettings", () => {
     expect(readAppSettings(storage)).toEqual({
       fullscreenLyricsFontFamily: "PingFang SC",
       fullscreenLyricsFontSize: MAX_FULLSCREEN_LYRICS_FONT_SIZE,
+      systemMediaShortcutsEnabled: false,
       desktopLyricsEnabled: true,
       desktopLyricsFontFamily: "LXGW WenKai",
       desktopLyricsFontSize: MAX_DESKTOP_LYRICS_FONT_SIZE
     });
+  });
+
+  it("reads and writes the system media shortcut setting", () => {
+    const storage = makeStorage({
+      [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
+        fullscreenLyricsFontFamily: "",
+        fullscreenLyricsFontSize: 36,
+        desktopLyricsEnabled: false,
+        desktopLyricsFontFamily: "",
+        desktopLyricsFontSize: 28,
+        systemMediaShortcutsEnabled: true
+      })
+    });
+
+    expect(readAppSettings(storage)).toEqual({
+      ...DEFAULT_APP_SETTINGS,
+      systemMediaShortcutsEnabled: true
+    });
+
+    writeAppSettings(
+      {
+        ...DEFAULT_APP_SETTINGS,
+        systemMediaShortcutsEnabled: true
+      },
+      storage
+    );
+
+    expect(storage.setItem).toHaveBeenCalledWith(
+      APP_SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        ...DEFAULT_APP_SETTINGS,
+        systemMediaShortcutsEnabled: true
+      })
+    );
   });
 
   it("rounds valid persisted decimal lyric font sizes", () => {
@@ -140,6 +175,7 @@ describe("appSettings", () => {
       {
         fullscreenLyricsFontFamily: "  PingFang SC  ",
         fullscreenLyricsFontSize: MIN_FULLSCREEN_LYRICS_FONT_SIZE + 0.6,
+        systemMediaShortcutsEnabled: false,
         desktopLyricsEnabled: true,
         desktopLyricsFontFamily: "  LXGW WenKai  ",
         desktopLyricsFontSize: MIN_DESKTOP_LYRICS_FONT_SIZE + 0.4
@@ -152,6 +188,7 @@ describe("appSettings", () => {
       JSON.stringify({
         fullscreenLyricsFontFamily: "PingFang SC",
         fullscreenLyricsFontSize: MIN_FULLSCREEN_LYRICS_FONT_SIZE + 1,
+        systemMediaShortcutsEnabled: false,
         desktopLyricsEnabled: true,
         desktopLyricsFontFamily: "LXGW WenKai",
         desktopLyricsFontSize: MIN_DESKTOP_LYRICS_FONT_SIZE
@@ -168,6 +205,7 @@ describe("appSettings", () => {
     expect(DEFAULT_APP_SETTINGS).toEqual({
       fullscreenLyricsFontFamily: "",
       fullscreenLyricsFontSize: 36,
+      systemMediaShortcutsEnabled: false,
       desktopLyricsEnabled: false,
       desktopLyricsFontFamily: "",
       desktopLyricsFontSize: 28

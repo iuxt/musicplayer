@@ -34,4 +34,20 @@ describe("Electron preload packaging", () => {
     expect(mainSource).toContain("showItemInFolder");
     expect(mainSource).toContain("trashItem");
   });
+
+  it("exposes system media shortcut APIs", async () => {
+    const preloadSource = await readFile(path.join(process.cwd(), "electron/preload.cts"), "utf8");
+    const mainSource = await readFile(path.join(process.cwd(), "electron/main.ts"), "utf8");
+
+    expect(preloadSource).toContain("setSystemMediaShortcutsEnabled");
+    expect(preloadSource).toContain("onMediaKeyCommand");
+    expect(preloadSource).toContain("playback:set-system-media-shortcuts-enabled");
+    expect(preloadSource).toContain("playback:media-key-command");
+    expect(mainSource).toContain("globalShortcut");
+    expect(mainSource).toContain("MediaPlayPause");
+    expect(mainSource).toContain("MediaNextTrack");
+    expect(mainSource).toContain("MediaPreviousTrack");
+    expect(mainSource).toContain("playback:set-system-media-shortcuts-enabled");
+    expect(mainSource).toContain("playback:media-key-command");
+  });
 });

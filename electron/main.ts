@@ -2,6 +2,7 @@ import {
   app,
   BrowserWindow,
   dialog,
+  globalShortcut,
   ipcMain,
   Menu,
   screen,
@@ -31,10 +32,48 @@ const maxDesktopLyricsHeight = 240;
 app.setName(appDisplayName);
 
 type MenuCommand = "choose-folder" | "rescan-library" | "open-settings";
+type MediaKeyCommand = "play-pause" | "next" | "previous";
+
+const systemMediaShortcuts: Array<{ accelerator: string; command: MediaKeyCommand }> = [
+  { accelerator: "MediaPlayPause", command: "play-pause" },
+  { accelerator: "MediaNextTrack", command: "next" },
+  { accelerator: "MediaPreviousTrack", command: "previous" }
+];
 
 function sendMenuCommand(command: MenuCommand) {
   const targetWindow = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
   targetWindow?.webContents.send("library:menu-command", command);
+}
+
+function sendMediaKeyCommand(command: MediaKeyCommand) {
+  if (!mainWindow || mainWindow.isDestroyed()) {
+    return;
+  }
+
+  mainWindow.webContents.send("playback:media-key-command", command);
+}
+
+function unregisterSystemMediaShortcuts() {
+  for (const shortcut of systemMediaShortcuts) {
+    globalShortcut.unregister(shortcut.accelerator);
+  }
+}
+
+function setSystemMediaShortcutsEnabled(enabled: boolean) {
+  unregisterSystemMediaShortcuts();
+  if (!enabled) {
+    return true;
+  }
+
+  const registeredAll = systemMediaShortcuts.every((shortcut) =>
+    globalShortcut.register(shortcut.accelerator, () => sendMediaKeyCommand(shortcut.command))
+  );
+
+  if (!registeredAll) {
+    unregisterSystemMediaShortcuts();
+  }
+
+  return registeredAll;
 }
 
 function getRendererUrl(windowMode?: "desktop-lyrics") {
@@ -72,6 +111,7 @@ async function showDesktopLyricsWindow() {
   }
 
   desktopLyricsWindow = new BrowserWindow({
+    title: "桌面歌词",
     width: 420,
     height: 92,
     resizable: false,
@@ -89,6 +129,7 @@ async function showDesktopLyricsWindow() {
       nodeIntegration: false
     }
   });
+  desktopLyricsWindow.excludedFromShownWindowsMenu = true;
 
   desktopLyricsWindow.on("closed", () => {
     desktopLyricsWindow = null;
@@ -262,6 +303,10 @@ function registerIpc() {
     mainWindow?.focus();
     mainWindow?.webContents.send("library:menu-command", "open-settings");
   });
+
+  ipcMain.handle("playback:set-system-media-shortcuts-enabled", (_event, enabled: boolean) => {
+    return setSystemMediaShortcutsEnabled(Boolean(enabled));
+  });
 }
 
 async function createWindow() {
@@ -322,6 +367,10 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+app.on("will-quit", () => {
+  unregisterSystemMediaShortcuts();
 });
 
 app.on("activate", () => {

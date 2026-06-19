@@ -12,6 +12,7 @@ interface SettingsPageProps {
   availableFontFamilies: string[];
   fullscreenLyricsFontFamily: string;
   fullscreenLyricsFontSize: number;
+  systemMediaShortcutsEnabled: boolean;
   desktopLyricsEnabled: boolean;
   desktopLyricsFontFamily: string;
   desktopLyricsFontSize: number;
@@ -22,6 +23,7 @@ interface SettingsPageProps {
   onClearLibraryCache: () => void;
   onFullscreenLyricsFontFamilyChange: (fontFamily: string) => void;
   onFullscreenLyricsFontSizeChange: (fontSize: number) => void;
+  onSystemMediaShortcutsEnabledChange: (enabled: boolean) => void;
   onDesktopLyricsEnabledChange: (enabled: boolean) => void;
   onDesktopLyricsFontFamilyChange: (fontFamily: string) => void;
   onDesktopLyricsFontSizeChange: (fontSize: number) => void;
@@ -33,6 +35,7 @@ export function SettingsPage({
   availableFontFamilies,
   fullscreenLyricsFontFamily,
   fullscreenLyricsFontSize,
+  systemMediaShortcutsEnabled,
   desktopLyricsEnabled,
   desktopLyricsFontFamily,
   desktopLyricsFontSize,
@@ -43,6 +46,7 @@ export function SettingsPage({
   onClearLibraryCache,
   onFullscreenLyricsFontFamilyChange,
   onFullscreenLyricsFontSizeChange,
+  onSystemMediaShortcutsEnabledChange,
   onDesktopLyricsEnabledChange,
   onDesktopLyricsFontFamilyChange,
   onDesktopLyricsFontSizeChange
@@ -86,8 +90,16 @@ export function SettingsPage({
       <section className="settings-section" aria-labelledby="playback-settings-heading">
         <div className="settings-section-heading">
           <h3 id="playback-settings-heading">播放</h3>
-          <p>播放偏好设置会显示在这里。</p>
         </div>
+        <label className="setting-toggle">
+          <input
+            aria-label="系统媒体快捷键"
+            checked={systemMediaShortcutsEnabled}
+            onChange={(event) => onSystemMediaShortcutsEnabledChange(event.target.checked)}
+            type="checkbox"
+          />
+          <span>系统媒体快捷键</span>
+        </label>
       </section>
 
       <section className="settings-section" aria-labelledby="lyrics-settings-heading">

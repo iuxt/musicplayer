@@ -12,6 +12,7 @@ import type {
 } from "./shared/types";
 
 export type MenuCommand = "choose-folder" | "rescan-library" | "open-settings";
+export type MediaKeyCommand = "play-pause" | "next" | "previous";
 
 declare global {
   interface Window {
@@ -31,10 +32,12 @@ declare global {
       updateDesktopLyrics: (payload: DesktopLyricsPayload) => Promise<void>;
       resizeDesktopLyrics: (width: number, height: number) => Promise<void>;
       openMainSettingsFromDesktopLyrics: () => Promise<void>;
+      setSystemMediaShortcutsEnabled: (enabled: boolean) => Promise<boolean>;
       onDesktopLyricsUpdate: (callback: (payload: DesktopLyricsPayload) => void) => () => void;
       onDesktopLyricsClosed: (callback: () => void) => () => void;
       onScanProgress: (callback: (progress: ScanProgress) => void) => () => void;
       onMenuCommand: (callback: (command: MenuCommand) => void) => () => void;
+      onMediaKeyCommand: (callback: (command: MediaKeyCommand) => void) => () => void;
     };
   }
 }

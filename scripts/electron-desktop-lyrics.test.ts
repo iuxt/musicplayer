@@ -24,6 +24,8 @@ describe("Electron desktop lyrics window", () => {
     expect(mainSource).toContain("alwaysOnTop: true");
     expect(mainSource).toContain("skipTaskbar: true");
     expect(mainSource).toContain("focusable: false");
+    expect(mainSource).toContain("desktopLyricsWindow.excludedFromShownWindowsMenu = true");
+    expect(mainSource).toContain('title: "桌面歌词"');
     expect(mainSource).toContain("showInactive()");
     expect(mainSource).toContain("window=desktop-lyrics");
     expect(mainSource).toContain("desktopLyricsWindow");

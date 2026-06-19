@@ -71,6 +71,15 @@ describe("SettingsPage", () => {
     expect(props.onDesktopLyricsFontFamilyChange).toHaveBeenCalledWith("LXGW WenKai");
     expect(props.onDesktopLyricsFontSizeChange).toHaveBeenCalledWith(32);
   });
+
+  it("changes playback system media shortcut settings", () => {
+    const props = makeProps({ systemMediaShortcutsEnabled: false });
+
+    render(<SettingsPage {...props} />);
+    fireEvent.click(screen.getByLabelText("系统媒体快捷键"));
+
+    expect(props.onSystemMediaShortcutsEnabledChange).toHaveBeenCalledWith(true);
+  });
 });
 
 function makeProps(overrides: Partial<Parameters<typeof SettingsPage>[0]> = {}): Parameters<typeof SettingsPage>[0] {
@@ -80,6 +89,7 @@ function makeProps(overrides: Partial<Parameters<typeof SettingsPage>[0]> = {}):
     availableFontFamilies: ["", "PingFang SC", "LXGW WenKai"],
     fullscreenLyricsFontFamily: "",
     fullscreenLyricsFontSize: 36,
+    systemMediaShortcutsEnabled: false,
     desktopLyricsEnabled: false,
     desktopLyricsFontFamily: "",
     desktopLyricsFontSize: 28,
@@ -90,6 +100,7 @@ function makeProps(overrides: Partial<Parameters<typeof SettingsPage>[0]> = {}):
     onClearLibraryCache: vi.fn(),
     onFullscreenLyricsFontFamilyChange: vi.fn(),
     onFullscreenLyricsFontSizeChange: vi.fn(),
+    onSystemMediaShortcutsEnabledChange: vi.fn(),
     onDesktopLyricsEnabledChange: vi.fn(),
     onDesktopLyricsFontFamilyChange: vi.fn(),
     onDesktopLyricsFontSizeChange: vi.fn(),

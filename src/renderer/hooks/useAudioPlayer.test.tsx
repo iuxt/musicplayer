@@ -46,10 +46,12 @@ beforeEach(() => {
     updateDesktopLyrics: vi.fn(),
     resizeDesktopLyrics: vi.fn(),
     openMainSettingsFromDesktopLyrics: vi.fn(),
+    setSystemMediaShortcutsEnabled: vi.fn(),
     onDesktopLyricsUpdate: vi.fn(),
     onDesktopLyricsClosed: vi.fn(),
     onScanProgress: vi.fn(),
-    onMenuCommand: vi.fn()
+    onMenuCommand: vi.fn(),
+    onMediaKeyCommand: vi.fn()
   };
 });
 

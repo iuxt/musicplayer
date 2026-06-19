@@ -18,12 +18,14 @@ const playbackStateKey = "musicplayer:playback-state";
 const appSettingsKey = "musicplayer:settings";
 
 let menuHandler: ((command: "choose-folder" | "rescan-library" | "open-settings") => void) | null = null;
+let mediaKeyHandler: ((command: "play-pause" | "next" | "previous") => void) | null = null;
 let desktopLyricsClosedHandler: (() => void) | null = null;
 let createdAudioElements: HTMLAudioElement[] = [];
 
 beforeEach(() => {
   localStorage.clear();
   createdAudioElements = [];
+  mediaKeyHandler = null;
   desktopLyricsClosedHandler = null;
   Element.prototype.scrollIntoView = vi.fn();
   vi.stubGlobal(
@@ -58,6 +60,7 @@ beforeEach(() => {
     updateDesktopLyrics: vi.fn(async () => undefined),
     resizeDesktopLyrics: vi.fn(async () => undefined),
     openMainSettingsFromDesktopLyrics: vi.fn(async () => undefined),
+    setSystemMediaShortcutsEnabled: vi.fn(async () => true),
     onDesktopLyricsUpdate: vi.fn(() => () => undefined),
     onDesktopLyricsClosed: vi.fn((callback) => {
       desktopLyricsClosedHandler = callback;
@@ -70,6 +73,12 @@ beforeEach(() => {
       menuHandler = callback;
       return () => {
         menuHandler = null;
+      };
+    }),
+    onMediaKeyCommand: vi.fn((callback) => {
+      mediaKeyHandler = callback;
+      return () => {
+        mediaKeyHandler = null;
       };
     })
   };
@@ -670,6 +679,48 @@ describe("App", () => {
     expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toMatchObject({ desktopLyricsEnabled: false });
   });
 
+  it("persists and applies the system media shortcut setting", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+    localStorage.setItem(appSettingsKey, JSON.stringify({ ...defaultStoredSettings(), systemMediaShortcutsEnabled: true }));
+
+    render(<App />);
+
+    await waitFor(() => expect(window.musicApi.setSystemMediaShortcutsEnabled).toHaveBeenCalledWith(true));
+    fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    fireEvent.click(screen.getByLabelText("系统媒体快捷键"));
+
+    await waitFor(() => expect(window.musicApi.setSystemMediaShortcutsEnabled).toHaveBeenLastCalledWith(false));
+    expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toMatchObject({
+      systemMediaShortcutsEnabled: false
+    });
+  });
+
+  it("handles system media key commands through the audio player", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+
+    await act(async () => {
+      mediaKeyHandler?.("play-pause");
+    });
+    await waitFor(() => expect(HTMLMediaElement.prototype.play).toHaveBeenCalled());
+    expect(window.musicApi.getPlayableUrl).toHaveBeenCalledWith(track.filePath);
+
+    await act(async () => {
+      mediaKeyHandler?.("next");
+    });
+    await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenCalledWith(folderTrack.filePath));
+
+    await act(async () => {
+      mediaKeyHandler?.("previous");
+    });
+    await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenCalledWith(track.filePath));
+  });
+
   it("persists fullscreen lyrics font size and applies it to fullscreen lyrics", async () => {
     const trackWithLyrics = { ...track, lyricsPath: "/music/Wave Song.lrc", hasLyrics: true };
     localStorage.setItem("musicplayer:last-folder", rememberedFolder);
@@ -685,6 +736,7 @@ describe("App", () => {
     expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toEqual({
       fullscreenLyricsFontFamily: "",
       fullscreenLyricsFontSize: 48,
+      systemMediaShortcutsEnabled: false,
       desktopLyricsEnabled: false,
       desktopLyricsFontFamily: "",
       desktopLyricsFontSize: 28
@@ -738,6 +790,7 @@ function defaultStoredSettings() {
   return {
     fullscreenLyricsFontFamily: "",
     fullscreenLyricsFontSize: 36,
+    systemMediaShortcutsEnabled: false,
     desktopLyricsEnabled: false,
     desktopLyricsFontFamily: "",
     desktopLyricsFontSize: 28
