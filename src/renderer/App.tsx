@@ -180,6 +180,13 @@ export function App() {
     [commitAppSettings]
   );
 
+  const changeCloseWindowStopsPlayback = useCallback(
+    (enabled: boolean) => {
+      commitAppSettings((currentSettings) => ({ ...currentSettings, closeWindowStopsPlayback: enabled }));
+    },
+    [commitAppSettings]
+  );
+
   const changeDesktopLyricsEnabled = useCallback(
     (enabled: boolean) => {
       commitAppSettings((currentSettings) => ({ ...currentSettings, desktopLyricsEnabled: enabled }));
@@ -358,6 +365,12 @@ export function App() {
       cancelled = true;
     };
   }, [appSettings.systemMediaShortcutsEnabled, commitAppSettings]);
+
+  useEffect(() => {
+    void window.musicApi.setCloseWindowStopsPlayback(appSettings.closeWindowStopsPlayback).catch(() => {
+      setAppError("无法更新关闭窗口播放设置。");
+    });
+  }, [appSettings.closeWindowStopsPlayback]);
 
   useEffect(() => {
     return window.musicApi.onMediaKeyCommand((command) => {
@@ -775,6 +788,7 @@ export function App() {
             fullscreenLyricsFontFamily={appSettings.fullscreenLyricsFontFamily}
             fullscreenLyricsFontSize={appSettings.fullscreenLyricsFontSize}
             systemMediaShortcutsEnabled={appSettings.systemMediaShortcutsEnabled}
+            closeWindowStopsPlayback={appSettings.closeWindowStopsPlayback}
             desktopLyricsEnabled={appSettings.desktopLyricsEnabled}
             desktopLyricsFontFamily={appSettings.desktopLyricsFontFamily}
             desktopLyricsFontSize={appSettings.desktopLyricsFontSize}
@@ -786,6 +800,7 @@ export function App() {
             onFullscreenLyricsFontFamilyChange={changeFullscreenLyricsFontFamily}
             onFullscreenLyricsFontSizeChange={changeFullscreenLyricsFontSize}
             onSystemMediaShortcutsEnabledChange={changeSystemMediaShortcutsEnabled}
+            onCloseWindowStopsPlaybackChange={changeCloseWindowStopsPlayback}
             onDesktopLyricsEnabledChange={changeDesktopLyricsEnabled}
             onDesktopLyricsFontFamilyChange={changeDesktopLyricsFontFamily}
             onDesktopLyricsFontSizeChange={changeDesktopLyricsFontSize}

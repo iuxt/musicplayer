@@ -48,6 +48,7 @@ beforeEach(() => {
     openMainSettingsFromDesktopLyrics: vi.fn(),
     ensureSystemMediaShortcutsPermission: vi.fn(),
     setSystemMediaShortcutsEnabled: vi.fn(),
+    setCloseWindowStopsPlayback: vi.fn(),
     onDesktopLyricsUpdate: vi.fn(),
     onDesktopLyricsClosed: vi.fn(),
     onScanProgress: vi.fn(),

@@ -89,6 +89,15 @@ describe("SettingsPage", () => {
 
     expect(props.onSystemMediaShortcutsEnabledChange).toHaveBeenCalledWith(true);
   });
+
+  it("changes the close-window playback setting", () => {
+    const props = makeProps({ closeWindowStopsPlayback: false });
+
+    render(<SettingsPage {...props} />);
+    fireEvent.click(screen.getByLabelText("关闭窗口时停止播放"));
+
+    expect(props.onCloseWindowStopsPlaybackChange).toHaveBeenCalledWith(true);
+  });
 });
 
 function makeProps(overrides: Partial<Parameters<typeof SettingsPage>[0]> = {}): Parameters<typeof SettingsPage>[0] {
@@ -99,6 +108,7 @@ function makeProps(overrides: Partial<Parameters<typeof SettingsPage>[0]> = {}):
     fullscreenLyricsFontFamily: "",
     fullscreenLyricsFontSize: 36,
     systemMediaShortcutsEnabled: false,
+    closeWindowStopsPlayback: false,
     desktopLyricsEnabled: false,
     desktopLyricsFontFamily: "",
     desktopLyricsFontSize: 28,
@@ -110,6 +120,7 @@ function makeProps(overrides: Partial<Parameters<typeof SettingsPage>[0]> = {}):
     onFullscreenLyricsFontFamilyChange: vi.fn(),
     onFullscreenLyricsFontSizeChange: vi.fn(),
     onSystemMediaShortcutsEnabledChange: vi.fn(),
+    onCloseWindowStopsPlaybackChange: vi.fn(),
     onDesktopLyricsEnabledChange: vi.fn(),
     onDesktopLyricsFontFamilyChange: vi.fn(),
     onDesktopLyricsFontSizeChange: vi.fn(),

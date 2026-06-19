@@ -27,6 +27,8 @@ const appDisplayName = "音乐播放器";
 let mainWindow: BrowserWindow | null = null;
 let desktopLyricsWindow: BrowserWindow | null = null;
 let latestDesktopLyricsPayload: DesktopLyricsPayload | null = null;
+let isQuitting = false;
+let closeWindowStopsPlayback = false;
 const maxDesktopLyricsWidth = 960;
 const maxDesktopLyricsHeight = 240;
 
@@ -162,7 +164,9 @@ async function showDesktopLyricsWindow() {
 
   desktopLyricsWindow.on("closed", () => {
     desktopLyricsWindow = null;
-    mainWindow?.webContents.send("desktop-lyrics:closed");
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("desktop-lyrics:closed");
+    }
   });
 
   await loadRendererWindow(desktopLyricsWindow, "desktop-lyrics");
@@ -337,6 +341,10 @@ function registerIpc() {
     return setSystemMediaShortcutsEnabled(Boolean(enabled));
   });
 
+  ipcMain.handle("window:set-close-window-stops-playback", (_event, enabled: boolean) => {
+    closeWindowStopsPlayback = Boolean(enabled);
+  });
+
   ipcMain.handle("playback:ensure-system-media-shortcuts-permission", () => {
     return ensureSystemMediaShortcutsPermission();
   });
@@ -359,11 +367,20 @@ async function createWindow() {
   });
 
   mainWindow = win;
+  win.on("close", (event) => {
+    if (process.platform !== "darwin" || isQuitting || closeWindowStopsPlayback) {
+      return;
+    }
+
+    event.preventDefault();
+    win.hide();
+  });
+
   win.on("closed", () => {
     if (mainWindow === win) {
       mainWindow = null;
     }
-    closeDesktopLyricsWindow();
+    setTimeout(() => closeDesktopLyricsWindow(), 0);
   });
 
   await loadRendererWindow(win);
@@ -397,9 +414,13 @@ app.whenReady().then(() => {
 });
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
+  if (process.platform !== "darwin" || closeWindowStopsPlayback) {
     app.quit();
   }
+});
+
+app.on("before-quit", () => {
+  isQuitting = true;
 });
 
 app.on("will-quit", () => {

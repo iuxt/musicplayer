@@ -39,6 +39,7 @@ beforeEach(() => {
     openMainSettingsFromDesktopLyrics: vi.fn(async () => undefined),
     ensureSystemMediaShortcutsPermission: vi.fn(async () => ({ ok: true as const })),
     setSystemMediaShortcutsEnabled: vi.fn(async () => ({ ok: true as const })),
+    setCloseWindowStopsPlayback: vi.fn(async () => undefined),
     onDesktopLyricsUpdate: vi.fn((callback) => {
       updateHandler = callback;
       return () => {

@@ -13,6 +13,7 @@ interface SettingsPageProps {
   fullscreenLyricsFontFamily: string;
   fullscreenLyricsFontSize: number;
   systemMediaShortcutsEnabled: boolean;
+  closeWindowStopsPlayback: boolean;
   desktopLyricsEnabled: boolean;
   desktopLyricsFontFamily: string;
   desktopLyricsFontSize: number;
@@ -24,6 +25,7 @@ interface SettingsPageProps {
   onFullscreenLyricsFontFamilyChange: (fontFamily: string) => void;
   onFullscreenLyricsFontSizeChange: (fontSize: number) => void;
   onSystemMediaShortcutsEnabledChange: (enabled: boolean) => void;
+  onCloseWindowStopsPlaybackChange: (enabled: boolean) => void;
   onDesktopLyricsEnabledChange: (enabled: boolean) => void;
   onDesktopLyricsFontFamilyChange: (fontFamily: string) => void;
   onDesktopLyricsFontSizeChange: (fontSize: number) => void;
@@ -36,6 +38,7 @@ export function SettingsPage({
   fullscreenLyricsFontFamily,
   fullscreenLyricsFontSize,
   systemMediaShortcutsEnabled,
+  closeWindowStopsPlayback,
   desktopLyricsEnabled,
   desktopLyricsFontFamily,
   desktopLyricsFontSize,
@@ -47,6 +50,7 @@ export function SettingsPage({
   onFullscreenLyricsFontFamilyChange,
   onFullscreenLyricsFontSizeChange,
   onSystemMediaShortcutsEnabledChange,
+  onCloseWindowStopsPlaybackChange,
   onDesktopLyricsEnabledChange,
   onDesktopLyricsFontFamilyChange,
   onDesktopLyricsFontSizeChange
@@ -99,6 +103,15 @@ export function SettingsPage({
             type="checkbox"
           />
           <span>系统媒体快捷键</span>
+        </label>
+        <label className="setting-toggle">
+          <input
+            aria-label="关闭窗口时停止播放"
+            checked={closeWindowStopsPlayback}
+            onChange={(event) => onCloseWindowStopsPlaybackChange(event.target.checked)}
+            type="checkbox"
+          />
+          <span>关闭窗口时停止播放</span>
         </label>
       </section>
 

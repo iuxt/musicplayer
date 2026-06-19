@@ -8,6 +8,7 @@ export interface AppSettings {
   fullscreenLyricsFontFamily: string;
   fullscreenLyricsFontSize: number;
   systemMediaShortcutsEnabled: boolean;
+  closeWindowStopsPlayback: boolean;
   desktopLyricsEnabled: boolean;
   desktopLyricsFontFamily: string;
   desktopLyricsFontSize: number;
@@ -17,6 +18,7 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   fullscreenLyricsFontFamily: "",
   fullscreenLyricsFontSize: 36,
   systemMediaShortcutsEnabled: false,
+  closeWindowStopsPlayback: false,
   desktopLyricsEnabled: false,
   desktopLyricsFontFamily: "",
   desktopLyricsFontSize: 28
@@ -89,12 +91,18 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     "systemMediaShortcutsEnabled",
     DEFAULT_APP_SETTINGS.systemMediaShortcutsEnabled
   );
+  const closeWindowStopsPlayback = getValueOrDefault(
+    value,
+    "closeWindowStopsPlayback",
+    DEFAULT_APP_SETTINGS.closeWindowStopsPlayback
+  );
 
   if (
     typeof fullscreenFontFamily !== "string" ||
     typeof desktopFontFamily !== "string" ||
     typeof desktopLyricsEnabled !== "boolean" ||
-    typeof systemMediaShortcutsEnabled !== "boolean"
+    typeof systemMediaShortcutsEnabled !== "boolean" ||
+    typeof closeWindowStopsPlayback !== "boolean"
   ) {
     return defaultAppSettings();
   }
@@ -103,6 +111,7 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     fullscreenLyricsFontFamily: fullscreenFontFamily.trim(),
     fullscreenLyricsFontSize: fullscreenFontSize,
     systemMediaShortcutsEnabled,
+    closeWindowStopsPlayback,
     desktopLyricsEnabled,
     desktopLyricsFontFamily: desktopFontFamily.trim(),
     desktopLyricsFontSize: desktopFontSize

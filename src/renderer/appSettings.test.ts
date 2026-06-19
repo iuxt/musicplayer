@@ -100,6 +100,7 @@ describe("appSettings", () => {
       [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
         fullscreenLyricsFontFamily: "PingFang SC",
         fullscreenLyricsFontSize: MAX_FULLSCREEN_LYRICS_FONT_SIZE,
+        closeWindowStopsPlayback: true,
         desktopLyricsEnabled: true,
         desktopLyricsFontFamily: "LXGW WenKai",
         desktopLyricsFontSize: MAX_DESKTOP_LYRICS_FONT_SIZE
@@ -110,6 +111,7 @@ describe("appSettings", () => {
       fullscreenLyricsFontFamily: "PingFang SC",
       fullscreenLyricsFontSize: MAX_FULLSCREEN_LYRICS_FONT_SIZE,
       systemMediaShortcutsEnabled: false,
+      closeWindowStopsPlayback: true,
       desktopLyricsEnabled: true,
       desktopLyricsFontFamily: "LXGW WenKai",
       desktopLyricsFontSize: MAX_DESKTOP_LYRICS_FONT_SIZE
@@ -150,6 +152,41 @@ describe("appSettings", () => {
     );
   });
 
+  it("reads and writes the close-window playback setting", () => {
+    const storage = makeStorage({
+      [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
+        fullscreenLyricsFontFamily: "",
+        fullscreenLyricsFontSize: 36,
+        systemMediaShortcutsEnabled: false,
+        closeWindowStopsPlayback: true,
+        desktopLyricsEnabled: false,
+        desktopLyricsFontFamily: "",
+        desktopLyricsFontSize: 28
+      })
+    });
+
+    expect(readAppSettings(storage)).toEqual({
+      ...DEFAULT_APP_SETTINGS,
+      closeWindowStopsPlayback: true
+    });
+
+    writeAppSettings(
+      {
+        ...DEFAULT_APP_SETTINGS,
+        closeWindowStopsPlayback: true
+      },
+      storage
+    );
+
+    expect(storage.setItem).toHaveBeenCalledWith(
+      APP_SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        ...DEFAULT_APP_SETTINGS,
+        closeWindowStopsPlayback: true
+      })
+    );
+  });
+
   it("rounds valid persisted decimal lyric font sizes", () => {
     const storage = makeStorage({
       [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
@@ -176,6 +213,7 @@ describe("appSettings", () => {
         fullscreenLyricsFontFamily: "  PingFang SC  ",
         fullscreenLyricsFontSize: MIN_FULLSCREEN_LYRICS_FONT_SIZE + 0.6,
         systemMediaShortcutsEnabled: false,
+        closeWindowStopsPlayback: false,
         desktopLyricsEnabled: true,
         desktopLyricsFontFamily: "  LXGW WenKai  ",
         desktopLyricsFontSize: MIN_DESKTOP_LYRICS_FONT_SIZE + 0.4
@@ -189,6 +227,7 @@ describe("appSettings", () => {
         fullscreenLyricsFontFamily: "PingFang SC",
         fullscreenLyricsFontSize: MIN_FULLSCREEN_LYRICS_FONT_SIZE + 1,
         systemMediaShortcutsEnabled: false,
+        closeWindowStopsPlayback: false,
         desktopLyricsEnabled: true,
         desktopLyricsFontFamily: "LXGW WenKai",
         desktopLyricsFontSize: MIN_DESKTOP_LYRICS_FONT_SIZE
@@ -206,6 +245,7 @@ describe("appSettings", () => {
       fullscreenLyricsFontFamily: "",
       fullscreenLyricsFontSize: 36,
       systemMediaShortcutsEnabled: false,
+      closeWindowStopsPlayback: false,
       desktopLyricsEnabled: false,
       desktopLyricsFontFamily: "",
       desktopLyricsFontSize: 28

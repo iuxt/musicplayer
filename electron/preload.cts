@@ -36,6 +36,8 @@ contextBridge.exposeInMainWorld("musicApi", {
     ipcRenderer.invoke("playback:ensure-system-media-shortcuts-permission"),
   setSystemMediaShortcutsEnabled: (enabled: boolean): Promise<SystemMediaShortcutsResult> =>
     ipcRenderer.invoke("playback:set-system-media-shortcuts-enabled", enabled),
+  setCloseWindowStopsPlayback: (enabled: boolean): Promise<void> =>
+    ipcRenderer.invoke("window:set-close-window-stops-playback", enabled),
   onDesktopLyricsUpdate: (callback: (payload: DesktopLyricsPayload) => void) => {
     const listener = (_event: IpcRendererEvent, payload: DesktopLyricsPayload) => callback(payload);
     ipcRenderer.on("desktop-lyrics:update", listener);

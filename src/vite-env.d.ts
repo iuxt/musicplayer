@@ -38,6 +38,7 @@ declare global {
       openMainSettingsFromDesktopLyrics: () => Promise<void>;
       ensureSystemMediaShortcutsPermission: () => Promise<SystemMediaShortcutsPermissionResult>;
       setSystemMediaShortcutsEnabled: (enabled: boolean) => Promise<SystemMediaShortcutsResult>;
+      setCloseWindowStopsPlayback: (enabled: boolean) => Promise<void>;
       onDesktopLyricsUpdate: (callback: (payload: DesktopLyricsPayload) => void) => () => void;
       onDesktopLyricsClosed: (callback: () => void) => () => void;
       onScanProgress: (callback: (progress: ScanProgress) => void) => () => void;

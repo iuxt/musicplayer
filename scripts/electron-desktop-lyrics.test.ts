@@ -39,4 +39,23 @@ describe("Electron desktop lyrics window", () => {
     expect(mainSource).toContain("mainWindow.focus()");
     expect(mainSource).toContain("app.on(\"activate\", () => {\n  void activateMainWindow();\n});");
   });
+
+  it("defers closing desktop lyrics until after the main window close callback unwinds", async () => {
+    const mainSource = await readFile(path.join(process.cwd(), "electron/main.ts"), "utf8");
+
+    expect(mainSource).toContain("setTimeout(() => closeDesktopLyricsWindow(), 0)");
+  });
+
+  it("hides the main window on macOS close unless the stop-playback setting is enabled", async () => {
+    const mainSource = await readFile(path.join(process.cwd(), "electron/main.ts"), "utf8");
+
+    expect(mainSource).toContain("let isQuitting = false");
+    expect(mainSource).toContain("let closeWindowStopsPlayback = false");
+    expect(mainSource).toContain('win.on("close", (event) => {');
+    expect(mainSource).toContain('process.platform !== "darwin" || isQuitting || closeWindowStopsPlayback');
+    expect(mainSource).toContain("event.preventDefault()");
+    expect(mainSource).toContain("win.hide()");
+    expect(mainSource).toContain('app.on("before-quit", () => {');
+    expect(mainSource).toContain("isQuitting = true");
+  });
 });

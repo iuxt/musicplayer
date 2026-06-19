@@ -62,6 +62,7 @@ beforeEach(() => {
     openMainSettingsFromDesktopLyrics: vi.fn(async () => undefined),
     ensureSystemMediaShortcutsPermission: vi.fn(async () => ({ ok: true as const })),
     setSystemMediaShortcutsEnabled: vi.fn(async () => ({ ok: true as const })),
+    setCloseWindowStopsPlayback: vi.fn(async () => undefined),
     onDesktopLyricsUpdate: vi.fn(() => () => undefined),
     onDesktopLyricsClosed: vi.fn((callback) => {
       desktopLyricsClosedHandler = callback;
@@ -697,6 +698,23 @@ describe("App", () => {
     });
   });
 
+  it("persists and applies the close-window playback setting", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+    localStorage.setItem(appSettingsKey, JSON.stringify({ ...defaultStoredSettings(), closeWindowStopsPlayback: true }));
+
+    render(<App />);
+
+    await waitFor(() => expect(window.musicApi.setCloseWindowStopsPlayback).toHaveBeenCalledWith(true));
+    fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    fireEvent.click(screen.getByLabelText("关闭窗口时停止播放"));
+
+    await waitFor(() => expect(window.musicApi.setCloseWindowStopsPlayback).toHaveBeenLastCalledWith(false));
+    expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toMatchObject({
+      closeWindowStopsPlayback: false
+    });
+  });
+
   it("shows which system media shortcuts failed to register", async () => {
     localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
@@ -779,6 +797,7 @@ describe("App", () => {
       fullscreenLyricsFontFamily: "",
       fullscreenLyricsFontSize: 48,
       systemMediaShortcutsEnabled: false,
+      closeWindowStopsPlayback: false,
       desktopLyricsEnabled: false,
       desktopLyricsFontFamily: "",
       desktopLyricsFontSize: 28
@@ -833,6 +852,7 @@ function defaultStoredSettings() {
     fullscreenLyricsFontFamily: "",
     fullscreenLyricsFontSize: 36,
     systemMediaShortcutsEnabled: false,
+    closeWindowStopsPlayback: false,
     desktopLyricsEnabled: false,
     desktopLyricsFontFamily: "",
     desktopLyricsFontSize: 28

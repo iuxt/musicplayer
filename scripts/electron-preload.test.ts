@@ -40,10 +40,12 @@ describe("Electron preload packaging", () => {
     const mainSource = await readFile(path.join(process.cwd(), "electron/main.ts"), "utf8");
 
     expect(preloadSource).toContain("setSystemMediaShortcutsEnabled");
+    expect(preloadSource).toContain("setCloseWindowStopsPlayback");
     expect(preloadSource).toContain("ensureSystemMediaShortcutsPermission");
     expect(preloadSource).toContain("onMediaKeyCommand");
     expect(preloadSource).toContain("playback:ensure-system-media-shortcuts-permission");
     expect(preloadSource).toContain("playback:set-system-media-shortcuts-enabled");
+    expect(preloadSource).toContain("window:set-close-window-stops-playback");
     expect(preloadSource).toContain("playback:media-key-command");
     expect(mainSource).toContain("systemPreferences");
     expect(mainSource).toContain("isTrustedAccessibilityClient(false)");
@@ -56,6 +58,7 @@ describe("Electron preload packaging", () => {
     expect(mainSource).toContain("MediaPreviousTrack");
     expect(mainSource).toContain("playback:ensure-system-media-shortcuts-permission");
     expect(mainSource).toContain("playback:set-system-media-shortcuts-enabled");
+    expect(mainSource).toContain("window:set-close-window-stops-playback");
     expect(mainSource).toContain("playback:media-key-command");
   });
 });
