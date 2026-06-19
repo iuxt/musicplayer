@@ -96,6 +96,17 @@ describe("renderer layout styles", () => {
     expect(shell).not.toContain("backdrop-filter");
     expect(shell).not.toContain("border-radius");
   });
+
+  it("uses glyph outlines instead of blurred shadows for desktop lyrics", async () => {
+    const css = await readStyles();
+    const shell = rule(css, ".desktop-lyrics-shell");
+    const preview = rule(css, ".desktop-lyrics-preview");
+
+    expect(shell).not.toContain("text-shadow");
+    expect(preview).not.toContain("text-shadow");
+    expect(shell).toContain("-webkit-text-stroke");
+    expect(preview).toContain("-webkit-text-stroke");
+  });
 });
 
 async function readStyles() {

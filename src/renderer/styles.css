@@ -441,7 +441,7 @@ button:disabled {
   padding: 16px 20px;
   color: white;
   background: transparent;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.82), 0 0 18px rgba(0, 0, 0, 0.46);
+  -webkit-text-stroke: 0.8px rgba(0, 0, 0, 0.72);
 }
 
 .desktop-lyrics-preview p,
@@ -1139,7 +1139,7 @@ input[type="range"] {
   background: transparent;
   font-family: var(--desktop-lyrics-font-family, ui-sans-serif, system-ui, sans-serif);
   overflow: visible;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.82), 0 0 18px rgba(0, 0, 0, 0.46);
+  -webkit-text-stroke: 0.8px rgba(0, 0, 0, 0.72);
 }
 
 .desktop-lyrics-text {
