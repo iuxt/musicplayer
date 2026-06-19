@@ -59,6 +59,15 @@ describe("SettingsPage", () => {
     expect(props.onFullscreenLyricsFontSizeChange).toHaveBeenCalledWith(48);
   });
 
+  it("renders lyric font size controls as dropdowns", () => {
+    render(<SettingsPage {...makeProps()} />);
+
+    expect(screen.getByLabelText("全屏歌词字号").tagName).toBe("SELECT");
+    expect(screen.getByLabelText("桌面歌词字号").tagName).toBe("SELECT");
+    expect(screen.queryByRole("slider", { name: "全屏歌词字号" })).toBeNull();
+    expect(screen.queryByRole("slider", { name: "桌面歌词字号" })).toBeNull();
+  });
+
   it("changes desktop lyrics settings", () => {
     const props = makeProps({ desktopLyricsEnabled: false, desktopLyricsFontFamily: "", desktopLyricsFontSize: 28 });
 

@@ -124,18 +124,19 @@ export function SettingsPage({
               ))}
             </select>
           </label>
-          <label className="lyrics-size-control">
+          <label className="lyrics-select-control">
             <span>字号</span>
-            <strong>{fullscreenLyricsFontSize}px</strong>
-            <input
+            <select
               aria-label="全屏歌词字号"
-              max={MAX_FULLSCREEN_LYRICS_FONT_SIZE}
-              min={MIN_FULLSCREEN_LYRICS_FONT_SIZE}
               onChange={(event) => onFullscreenLyricsFontSizeChange(Number(event.target.value))}
-              step="1"
-              type="range"
               value={fullscreenLyricsFontSize}
-            />
+            >
+              {fontSizeOptions(MIN_FULLSCREEN_LYRICS_FONT_SIZE, MAX_FULLSCREEN_LYRICS_FONT_SIZE).map((fontSize) => (
+                <option key={fontSize} value={fontSize}>
+                  {fontSize}px
+                </option>
+              ))}
+            </select>
           </label>
           <p
             className="lyrics-preview"
@@ -170,18 +171,19 @@ export function SettingsPage({
               ))}
             </select>
           </label>
-          <label className="lyrics-size-control">
+          <label className="lyrics-select-control">
             <span>字号</span>
-            <strong>{desktopLyricsFontSize}px</strong>
-            <input
+            <select
               aria-label="桌面歌词字号"
-              max={MAX_DESKTOP_LYRICS_FONT_SIZE}
-              min={MIN_DESKTOP_LYRICS_FONT_SIZE}
               onChange={(event) => onDesktopLyricsFontSizeChange(Number(event.target.value))}
-              step="1"
-              type="range"
               value={desktopLyricsFontSize}
-            />
+            >
+              {fontSizeOptions(MIN_DESKTOP_LYRICS_FONT_SIZE, MAX_DESKTOP_LYRICS_FONT_SIZE).map((fontSize) => (
+                <option key={fontSize} value={fontSize}>
+                  {fontSize}px
+                </option>
+              ))}
+            </select>
           </label>
           <div
             className="desktop-lyrics-preview"
@@ -194,4 +196,8 @@ export function SettingsPage({
       </section>
     </section>
   );
+}
+
+function fontSizeOptions(min: number, max: number) {
+  return Array.from({ length: max - min + 1 }, (_, index) => min + index);
 }
