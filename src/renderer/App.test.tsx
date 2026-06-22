@@ -485,6 +485,57 @@ describe("App", () => {
     expect(cached.tracks[0].hasLyrics).toBe(false);
   });
 
+  it("shows the disk filename in the track trash confirmation", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(false);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    fireEvent.contextMenu(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "移到废纸篓" }));
+
+    expect(confirmSpy).toHaveBeenCalledWith("将把音乐文件“Wave Song.wav”以及同名歌词、同名封面移到废纸篓。是否继续？");
+    expect(window.musicApi.trashTrackFiles).not.toHaveBeenCalled();
+
+    confirmSpy.mockRestore();
+  });
+
+  it("stops the current track before trashing it and does not start the next track", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    const deleteEvents: string[] = [];
+    Object.defineProperty(HTMLMediaElement.prototype, "pause", {
+      configurable: true,
+      value: vi.fn(() => {
+        deleteEvents.push("pause");
+      })
+    });
+    window.musicApi.trashTrackFiles = vi.fn(async () => {
+      deleteEvents.push("trash");
+      return { ok: true, audioRemoved: true, trashed: [], failed: [], error: null };
+    });
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    });
+    await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenCalledWith(track.filePath));
+
+    fireEvent.contextMenu(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "移到废纸篓" }));
+
+    await waitFor(() => expect(window.musicApi.trashTrackFiles).toHaveBeenCalledWith(track));
+    expect(deleteEvents).toEqual(["pause", "trash"]);
+    expect(window.musicApi.getPlayableUrl).not.toHaveBeenCalledWith(folderTrack.filePath);
+
+    confirmSpy.mockRestore();
+  });
+
   it("trashes a track and removes it from library and playlist", async () => {
     localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
@@ -494,7 +545,7 @@ describe("App", () => {
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
     fireEvent.contextMenu(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "删除当前音乐文件" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "移到废纸篓" }));
 
     await waitFor(() => expect(window.musicApi.trashTrackFiles).toHaveBeenCalledWith(track));
     expect(within(screen.getByRole("region", { name: "音乐库浏览器" })).queryByText("Wave Song")).toBeNull();

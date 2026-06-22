@@ -67,7 +67,7 @@ export function TrackContextMenu({
         </button>
         <button className="danger" role="menuitem" type="button" disabled={busy} onClick={onDeleteTrack}>
           <Trash2 size={16} />
-          删除当前音乐文件
+          移到废纸篓
         </button>
       </div>
     </div>

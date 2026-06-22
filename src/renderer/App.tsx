@@ -23,6 +23,12 @@ const PLAYBACK_PROGRESS_SAVE_INTERVAL_MS = 5000;
 const DEFAULT_PLAYLIST_LABEL = "音乐库";
 const DEFAULT_FOLDER_PLAYLIST_LABEL = "文件夹";
 
+function getFileNameForDisplay(filePath: string) {
+  const normalizedPath = filePath.replace(/\\/g, "/");
+  const segments = normalizedPath.split("/").filter(Boolean);
+  return segments[segments.length - 1] || filePath;
+}
+
 type PlaybackState = {
   trackId: string;
   currentTime: number;
@@ -76,6 +82,7 @@ export function App() {
     savedAt: 0,
     wasPlaying: false
   });
+  const stoppedBeforeTrashTrackIdRef = useRef<string | null>(null);
 
   const loadLibraryResult = useCallback((result: ScanResult) => {
     setFolderPath(result.folderPath);
@@ -645,6 +652,10 @@ export function App() {
       setIsPlayQueueExplicit(true);
       removePlaybackStateForTrack(trackToRemove.id);
 
+      if (stoppedBeforeTrashTrackIdRef.current === trackToRemove.id) {
+        return;
+      }
+
       if (player.currentTrack?.id !== trackToRemove.id) {
         return;
       }
@@ -738,7 +749,8 @@ export function App() {
 
   const deleteTrackFiles = useCallback(
     async (track: Track) => {
-      const confirmed = window.confirm("将把当前音乐文件、同名歌词和同名封面移到废纸篓。是否继续？");
+      const fileName = getFileNameForDisplay(track.filePath);
+      const confirmed = window.confirm(`将把音乐文件“${fileName}”以及同名歌词、同名封面移到废纸篓。是否继续？`);
       if (!confirmed) {
         setTrackMenu(null);
         return;
@@ -746,6 +758,14 @@ export function App() {
 
       setPendingMediaAction(true);
       setAppError(null);
+      if (player.currentTrack?.id === track.id) {
+        stoppedBeforeTrashTrackIdRef.current = track.id;
+        setLyrics(null);
+        setArtworkUrl(null);
+        setIsLyricsLoading(false);
+        player.stop();
+      }
+
       try {
         const result = await window.musicApi.trashTrackFiles(track);
         if (result.audioRemoved) {
@@ -757,11 +777,14 @@ export function App() {
       } catch (error) {
         setAppError(error instanceof Error ? error.message : "无法将音乐文件移到废纸篓。");
       } finally {
+        if (stoppedBeforeTrashTrackIdRef.current === track.id) {
+          stoppedBeforeTrashTrackIdRef.current = null;
+        }
         setPendingMediaAction(false);
         setTrackMenu(null);
       }
     },
-    [removeTrackFromLibrary]
+    [player, removeTrackFromLibrary]
   );
 
   return (
