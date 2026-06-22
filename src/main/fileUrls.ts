@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
 
 export function toMediaFileUrl(filePath: string): string {
@@ -11,6 +11,20 @@ export function toMediaFileUrl(filePath: string): string {
 
 export function toOptionalFileUrl(filePath: string | null): string | null {
   return filePath ? toMediaFileUrl(filePath) : null;
+}
+
+export async function toExistingOptionalFileUrl(filePath: string | null): Promise<string | null> {
+  if (!filePath) {
+    return null;
+  }
+
+  try {
+    await access(filePath);
+  } catch {
+    return null;
+  }
+
+  return toMediaFileUrl(filePath);
 }
 
 export async function readLyricsFile(filePath: string | null): Promise<string | null> {

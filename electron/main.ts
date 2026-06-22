@@ -13,7 +13,7 @@ import {
 } from "electron";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { readLyricsFile, toMediaFileUrl, toOptionalFileUrl } from "../src/main/fileUrls.js";
+import { readLyricsFile, toExistingOptionalFileUrl, toMediaFileUrl } from "../src/main/fileUrls.js";
 import { writeTrackMetadata } from "../src/main/metadataWriter.js";
 import { scanMusicFolder } from "../src/main/scanner.js";
 import { listSystemFonts } from "../src/main/systemFonts.js";
@@ -272,12 +272,14 @@ function registerIpc() {
 
     const folderPath = result.filePaths[0];
     return scanMusicFolder(folderPath, {
+      artworkCacheDir: getArtworkCacheDir(),
       onProgress: (progress) => event.sender.send("library:scan-progress", progress)
     });
   });
 
   ipcMain.handle("library:rescan", async (event, folderPath: string) => {
     return scanMusicFolder(folderPath, {
+      artworkCacheDir: getArtworkCacheDir(),
       onProgress: (progress) => event.sender.send("library:scan-progress", progress)
     });
   });
@@ -287,7 +289,7 @@ function registerIpc() {
   });
 
   ipcMain.handle("media:get-artwork-url", (_event, filePath: string | null) => {
-    return toOptionalFileUrl(filePath);
+    return toExistingOptionalFileUrl(filePath);
   });
 
   ipcMain.handle("media:get-lyrics", (_event, filePath: string | null) => {
@@ -348,6 +350,10 @@ function registerIpc() {
   ipcMain.handle("playback:ensure-system-media-shortcuts-permission", () => {
     return ensureSystemMediaShortcutsPermission();
   });
+}
+
+function getArtworkCacheDir() {
+  return path.join(app.getPath("userData"), "artwork");
 }
 
 async function createWindow() {

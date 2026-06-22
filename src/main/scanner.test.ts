@@ -102,4 +102,22 @@ describe("scanMusicFolder", () => {
     expect(artworkPath).toMatch(/\.jpg$/);
     await expect(readFile(artworkPath)).resolves.toEqual(Buffer.from([1, 2, 3]));
   });
+
+  it("writes embedded artwork into a configured cache directory", async () => {
+    const trackPath = path.join(await mkdtemp(path.join(os.tmpdir(), "embedded-art-custom-")), "song.mp3");
+    const artworkCacheDir = await mkdtemp(path.join(os.tmpdir(), "musicplayer-artwork-cache-"));
+
+    const artworkPath = await writeEmbeddedArtwork(
+      trackPath,
+      {
+        format: "image/png",
+        data: new Uint8Array([4, 5, 6])
+      },
+      artworkCacheDir
+    );
+
+    expect(path.dirname(artworkPath)).toBe(artworkCacheDir);
+    expect(artworkPath).toMatch(/\.png$/);
+    await expect(readFile(artworkPath)).resolves.toEqual(Buffer.from([4, 5, 6]));
+  });
 });

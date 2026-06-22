@@ -11,6 +11,7 @@ const progressTrackInterval = 16;
 
 interface ScanOptions {
   onProgress?: (progress: ScanProgress) => void;
+  artworkCacheDir?: string;
 }
 
 export async function scanMusicFolder(folderPath: string, options: ScanOptions = {}): Promise<ScanResult> {
@@ -50,7 +51,7 @@ export async function scanMusicFolder(folderPath: string, options: ScanOptions =
         continue;
       }
 
-      const track = await buildTrack(entryPath, folderPath, extension, siblingFileNames);
+      const track = await buildTrack(entryPath, folderPath, extension, siblingFileNames, options.artworkCacheDir);
       tracks.push(track);
       report(currentFolder);
     }
@@ -102,7 +103,8 @@ async function buildTrack(
   filePath: string,
   rootFolderPath: string,
   extension: SupportedAudioExtension,
-  siblingFileNames: string[]
+  siblingFileNames: string[],
+  artworkCacheDir?: string
 ): Promise<Track> {
   const fallbackTitle = path.basename(filePath, path.extname(filePath));
   let title = fallbackTitle;
@@ -122,7 +124,7 @@ async function buildTrack(
     duration = Number.isFinite(metadata.format.duration) ? metadata.format.duration ?? 0 : 0;
     trackNumber = metadata.common.track.no ?? null;
     if (metadata.common.picture?.[0]) {
-      artworkPath = await writeEmbeddedArtwork(filePath, metadata.common.picture[0]);
+      artworkPath = await writeEmbeddedArtwork(filePath, metadata.common.picture[0], artworkCacheDir);
     }
     artworkId = artworkPath ? stableId(`${filePath}:artwork`) : null;
   } catch {
@@ -200,9 +202,9 @@ async function parseAudioFile(filePath: string) {
 
 export async function writeEmbeddedArtwork(
   trackPath: string,
-  picture: { format: string; data: Uint8Array }
+  picture: { format: string; data: Uint8Array },
+  cacheDir = path.join(os.tmpdir(), "musicplayer-artwork")
 ): Promise<string> {
-  const cacheDir = path.join(os.tmpdir(), "musicplayer-artwork");
   await mkdir(cacheDir, { recursive: true });
   const extension = artworkExtensionForFormat(picture.format);
   const artworkPath = path.join(cacheDir, `${stableId(trackPath)}.${extension}`);

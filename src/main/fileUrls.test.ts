@@ -2,7 +2,7 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { readLyricsFile, toMediaFileUrl, toOptionalFileUrl } from "./fileUrls.js";
+import { readLyricsFile, toExistingOptionalFileUrl, toMediaFileUrl, toOptionalFileUrl } from "./fileUrls.js";
 
 describe("toMediaFileUrl", () => {
   it("encodes local file paths as file URLs", () => {
@@ -18,6 +18,13 @@ describe("toMediaFileUrl", () => {
 
   it("returns null for missing optional file paths", () => {
     expect(toOptionalFileUrl(null)).toBeNull();
+  });
+
+  it("returns null for optional file paths that no longer exist", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "missing-artwork-"));
+    const missingPath = path.join(root, "cover.jpg");
+
+    await expect(toExistingOptionalFileUrl(missingPath)).resolves.toBeNull();
   });
 
   it("reads lyrics files as text", async () => {

@@ -62,6 +62,32 @@ describe("PlayerBar", () => {
 
     expect(onPlaybackMode).toHaveBeenCalledOnce();
   });
+
+  it("falls back to the default artwork icon when the mini artwork image cannot load", () => {
+    render(
+      <PlayerBar
+        track={makeTrack()}
+        artworkUrl="file:///missing-cover.jpg"
+        isPlaying={false}
+        currentTime={0}
+        duration={180}
+        volume={0.8}
+        shuffle={false}
+        repeat="off"
+        onOpenNowPlaying={() => undefined}
+        onPlayPause={() => undefined}
+        onPrevious={() => undefined}
+        onNext={() => undefined}
+        onSeek={() => undefined}
+        onVolume={() => undefined}
+        onPlaybackMode={() => undefined}
+      />
+    );
+
+    fireEvent.error(screen.getByRole("img", { name: "Album 封面" }));
+
+    expect(screen.queryByRole("img", { name: "Album 封面" })).toBeNull();
+  });
 });
 
 function makeTrack(): Track {

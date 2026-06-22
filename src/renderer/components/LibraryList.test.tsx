@@ -84,6 +84,34 @@ describe("LibraryList", () => {
     expect(getArtworkUrl).toHaveBeenCalledWith("/music/cover.jpg");
   });
 
+  it("falls back to the default artwork icon when an artwork image cannot load", async () => {
+    const track = makeTrack(1, { artworkPath: "/music/missing-cover.jpg" });
+    const getArtworkUrl = vi.fn(async (filePath: string | null) => (filePath ? `file://${filePath}` : null));
+    Object.defineProperty(window, "musicApi", {
+      configurable: true,
+      value: { getArtworkUrl }
+    });
+
+    render(
+      <LibraryList
+        category="songs"
+        tracks={[track]}
+        currentTrack={null}
+        search=""
+        selectedFolderPath={null}
+        onSearchChange={() => undefined}
+        onSelectTrack={() => undefined}
+        onOpenFolder={() => undefined}
+        onBackToFolders={() => undefined}
+        onTrackContextMenu={() => undefined}
+      />
+    );
+
+    fireEvent.error(await screen.findByRole("img", { name: "Album 封面" }));
+
+    expect(screen.queryByRole("img", { name: "Album 封面" })).toBeNull();
+  });
+
   it("shows album artwork from the first album track with artwork", async () => {
     const tracks = [
       makeTrack(1, { artworkPath: null }),

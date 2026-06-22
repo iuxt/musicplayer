@@ -1,6 +1,7 @@
-import { Disc3, Pause, Play, Repeat, Shuffle, SkipBack, SkipForward, Volume2 } from "lucide-react";
+import { Pause, Play, Repeat, Shuffle, SkipBack, SkipForward, Volume2 } from "lucide-react";
 import type { Track } from "../../shared/types";
 import type { RepeatMode } from "../hooks/useAudioPlayer";
+import { ArtworkImage } from "./ArtworkImage";
 
 interface PlayerBarProps {
   track: Track | null;
@@ -50,7 +51,7 @@ export function PlayerBar({
         disabled={!track}
       >
         <span className="mini-cover">
-          {artworkUrl ? <img src={artworkUrl} alt={track ? `${track.album} 封面` : "专辑封面"} /> : <Disc3 size={22} />}
+          <ArtworkImage artworkUrl={artworkUrl} alt={track ? `${track.album} 封面` : "专辑封面"} iconSize={22} />
         </span>
         <span className="mini-track-copy">
           <strong>{track?.title ?? "暂无播放"}</strong>

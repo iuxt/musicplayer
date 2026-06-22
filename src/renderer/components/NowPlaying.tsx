@@ -1,5 +1,5 @@
-import { Disc3 } from "lucide-react";
 import type { Track } from "../../shared/types";
+import { ArtworkImage } from "./ArtworkImage";
 
 interface NowPlayingProps {
   track: Track | null;
@@ -11,13 +11,13 @@ export function NowPlaying({ track, artworkUrl, playbackError }: NowPlayingProps
   return (
     <section className="now-playing">
       <div className="cover-frame">
-        {artworkUrl ? (
-          <img className="cover-image" src={artworkUrl} alt={track ? `${track.album} 封面` : "专辑封面"} />
-        ) : (
-          <div className="cover-art">
-            <Disc3 size={84} />
-          </div>
-        )}
+        <ArtworkImage
+          artworkUrl={artworkUrl}
+          alt={track ? `${track.album} 封面` : "专辑封面"}
+          imageClassName="cover-image"
+          fallbackClassName="cover-art"
+          iconSize={84}
+        />
       </div>
       <div className="track-copy">
         <p className="eyebrow">正在播放</p>

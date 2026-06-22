@@ -1,7 +1,8 @@
-import { Disc3, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useEffect, useMemo, useRef, type CSSProperties } from "react";
 import type { Track } from "../../shared/types";
 import { findActiveLineIndex, parseLyrics } from "../lyrics";
+import { ArtworkImage } from "./ArtworkImage";
 
 interface FullscreenLyricsProps {
   track: Track | null;
@@ -56,13 +57,13 @@ export function FullscreenLyrics({
 
       <div className="fullscreen-artwork-column">
         <div className="fullscreen-cover-frame">
-          {artworkUrl ? (
-            <img className="cover-image" src={artworkUrl} alt={track ? `${track.album} 封面` : "专辑封面"} />
-          ) : (
-            <div className="cover-art">
-              <Disc3 size={112} />
-            </div>
-          )}
+          <ArtworkImage
+            artworkUrl={artworkUrl}
+            alt={track ? `${track.album} 封面` : "专辑封面"}
+            imageClassName="cover-image"
+            fallbackClassName="cover-art"
+            iconSize={112}
+          />
         </div>
         <div className="fullscreen-track-copy">
           <p className="eyebrow">正在播放</p>

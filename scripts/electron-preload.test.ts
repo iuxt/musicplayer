@@ -61,4 +61,11 @@ describe("Electron preload packaging", () => {
     expect(mainSource).toContain("window:set-close-window-stops-playback");
     expect(mainSource).toContain("playback:media-key-command");
   });
+
+  it("stores extracted artwork under the app user data directory", async () => {
+    const mainSource = await readFile(path.join(process.cwd(), "electron/main.ts"), "utf8");
+
+    expect(mainSource).toContain('app.getPath("userData")');
+    expect(mainSource).toContain("artworkCacheDir: getArtworkCacheDir()");
+  });
 });

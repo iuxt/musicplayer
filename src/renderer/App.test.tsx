@@ -104,6 +104,26 @@ describe("App", () => {
     expect(window.musicApi.rescanLibrary).not.toHaveBeenCalled();
   });
 
+  it("rescans cached libraries that still point to legacy temporary artwork files", async () => {
+    const legacyCachedResult: ScanResult = {
+      ...scanResult,
+      tracks: [
+        {
+          ...track,
+          artworkId: "legacy-artwork",
+          artworkPath: "/var/folders/musicplayer-artwork/legacy-cover.jpg"
+        }
+      ]
+    };
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(legacyCachedResult));
+
+    render(<App />);
+
+    await waitFor(() => expect(window.musicApi.rescanLibrary).toHaveBeenCalledWith(rememberedFolder));
+    await waitFor(() => expect(localStorage.getItem(libraryCacheKey)).toBe(JSON.stringify(scanResult)));
+  });
+
   it("rescans the remembered folder on startup when no cache exists", async () => {
     localStorage.setItem("musicplayer:last-folder", rememberedFolder);
 

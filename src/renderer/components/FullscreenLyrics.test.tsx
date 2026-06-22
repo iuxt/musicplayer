@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Track } from "../../shared/types";
 import { FullscreenLyrics } from "./FullscreenLyrics";
@@ -45,6 +45,25 @@ describe("FullscreenLyrics", () => {
     const fullscreenLyrics = screen.getByRole("region", { name: "全屏歌词" });
     expect((fullscreenLyrics as HTMLElement).style.getPropertyValue("--fullscreen-lyrics-font-family")).toContain("PingFang SC");
     expect((fullscreenLyrics as HTMLElement).style.getPropertyValue("--fullscreen-lyrics-font-size")).toBe("48px");
+  });
+
+  it("falls back to the default artwork when the fullscreen artwork image cannot load", () => {
+    render(
+      <FullscreenLyrics
+        track={track}
+        artworkUrl="file:///missing-cover.jpg"
+        lyrics={null}
+        isLyricsLoading={false}
+        currentTime={0}
+        fullscreenLyricsFontFamily=""
+        fullscreenLyricsFontSize={36}
+        onClose={() => undefined}
+      />
+    );
+
+    fireEvent.error(screen.getByRole("img", { name: "Album 封面" }));
+
+    expect(screen.queryByRole("img", { name: "Album 封面" })).toBeNull();
   });
 });
 

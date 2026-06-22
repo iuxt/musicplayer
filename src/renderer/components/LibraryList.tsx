@@ -3,6 +3,7 @@ import { memo, useEffect, useMemo, useState } from "react";
 import type { Track } from "../../shared/types";
 import { buildFolderBrowserRows } from "../folderBrowser";
 import type { LibraryCategory } from "../libraryCategories";
+import { ArtworkImage } from "./ArtworkImage";
 import { VirtualizedList } from "./VirtualizedList";
 
 interface LibraryListProps {
@@ -210,7 +211,7 @@ function ArtworkThumbnail({ alt, artworkPath }: { alt: string; artworkPath: stri
 
   return (
     <span className="track-artwork">
-      {artworkUrl ? <img src={artworkUrl} alt={alt} /> : <Disc3 size={18} aria-hidden="true" />}
+      <ArtworkImage artworkUrl={artworkUrl} alt={alt} iconSize={18} />
     </span>
   );
 }

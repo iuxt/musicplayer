@@ -952,10 +952,26 @@ function readLibraryCache(folderPath: string): ScanResult | null {
 
   try {
     const parsed = JSON.parse(cachedValue) as unknown;
-    return isScanResultForFolder(parsed, folderPath) ? parsed : null;
+    if (!isScanResultForFolder(parsed, folderPath) || hasLegacyTemporaryArtworkPaths(parsed)) {
+      return null;
+    }
+
+    return parsed;
   } catch {
     return null;
   }
+}
+
+function hasLegacyTemporaryArtworkPaths(result: ScanResult) {
+  return result.tracks.some((track) => isLegacyTemporaryArtworkPath(track.artworkPath));
+}
+
+function isLegacyTemporaryArtworkPath(artworkPath: string | null) {
+  if (!artworkPath) {
+    return false;
+  }
+
+  return artworkPath.replace(/\\/g, "/").includes("/musicplayer-artwork/");
 }
 
 function savePlaybackState(state: PlaybackState) {
