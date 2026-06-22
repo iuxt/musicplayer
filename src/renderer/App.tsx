@@ -137,6 +137,8 @@ export function App() {
   const playlistQueueKey = useMemo(() => playlistTrackIds.join("\u0000"), [playlistTrackIds]);
 
   const player = useAudioPlayer(playlistTracks);
+  const playerRef = useRef(player);
+  playerRef.current = player;
 
   const commitAppSettings = useCallback((updater: (currentSettings: AppSettings) => AppSettings) => {
     setAppSettings((currentSettings) => {
@@ -652,11 +654,18 @@ export function App() {
       setIsPlayQueueExplicit(true);
       removePlaybackStateForTrack(trackToRemove.id);
 
+      const currentPlayer = playerRef.current;
       if (stoppedBeforeTrashTrackIdRef.current === trackToRemove.id) {
+        if (currentPlayer.currentTrack?.id === trackToRemove.id) {
+          setLyrics(null);
+          setArtworkUrl(null);
+          setIsLyricsLoading(false);
+          currentPlayer.stop();
+        }
         return;
       }
 
-      if (player.currentTrack?.id !== trackToRemove.id) {
+      if (currentPlayer.currentTrack?.id !== trackToRemove.id) {
         return;
       }
 
@@ -664,17 +673,17 @@ export function App() {
       setArtworkUrl(null);
       setIsLyricsLoading(false);
       if (!nextTrack) {
-        player.stop();
+        currentPlayer.stop();
         return;
       }
 
-      if (player.isPlaying) {
-        await player.playTrack(nextTrack);
+      if (currentPlayer.isPlaying) {
+        await currentPlayer.playTrack(nextTrack);
       } else {
-        await player.selectTrack(nextTrack);
+        await currentPlayer.selectTrack(nextTrack);
       }
     },
-    [commitTracks, player, playlistTracks]
+    [commitTracks, playlistTracks]
   );
 
   const showTrackInFolder = useCallback(async (track: Track) => {

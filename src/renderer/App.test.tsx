@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ScanResult, Track } from "../shared/types";
+import type { ScanResult, Track, TrashTrackFilesResult } from "../shared/types";
 import { App } from "./App";
 
 const rememberedFolder = "/Users/test/Music";
@@ -531,6 +531,50 @@ describe("App", () => {
 
     await waitFor(() => expect(window.musicApi.trashTrackFiles).toHaveBeenCalledWith(track));
     expect(deleteEvents).toEqual(["pause", "trash"]);
+    expect(window.musicApi.getPlayableUrl).not.toHaveBeenCalledWith(folderTrack.filePath);
+
+    confirmSpy.mockRestore();
+  });
+
+  it("clears the current track if it is reselected while trashing", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+    let resolveTrash!: (result: TrashTrackFilesResult) => void;
+    const trashPromise = new Promise<TrashTrackFilesResult>((resolve) => {
+      resolveTrash = resolve;
+    });
+    window.musicApi.trashTrackFiles = vi.fn(() => trashPromise);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    });
+    await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenCalledWith(track.filePath));
+
+    fireEvent.contextMenu(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "移到废纸篓" }));
+    await waitFor(() => expect(window.musicApi.trashTrackFiles).toHaveBeenCalledWith(track));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    });
+    expect(window.musicApi.getPlayableUrl).toHaveBeenLastCalledWith(track.filePath);
+    expect(screen.getByRole("button", { name: "暂停" })).toBeTruthy();
+
+    await act(async () => {
+      resolveTrash({ ok: true, audioRemoved: true, trashed: [], failed: [], error: null });
+      await trashPromise;
+    });
+
+    await waitFor(() =>
+      expect(within(screen.getByRole("region", { name: "音乐库浏览器" })).queryByText("Wave Song")).toBeNull()
+    );
+    expect(within(screen.getByRole("region", { name: "播放列表" })).queryByText("Wave Song")).toBeNull();
+    expect(within(screen.getByRole("contentinfo")).queryByText("Wave Song")).toBeNull();
+    expect(screen.queryByRole("button", { name: "暂停" })).toBeNull();
     expect(window.musicApi.getPlayableUrl).not.toHaveBeenCalledWith(folderTrack.filePath);
 
     confirmSpy.mockRestore();
