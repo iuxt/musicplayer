@@ -641,25 +641,6 @@ export function App() {
     [commitTracks, player]
   );
 
-  const updateTrackLyricsState = useCallback(
-    (trackId: string) => {
-      commitTracks((currentTracks) =>
-        currentTracks.map((existingTrack) =>
-          existingTrack.id === trackId ? { ...existingTrack, lyricsPath: null, hasLyrics: false } : existingTrack
-        )
-      );
-      setPlayQueue((queue) =>
-        queue.map((queuedTrack) => (queuedTrack.id === trackId ? { ...queuedTrack, lyricsPath: null, hasLyrics: false } : queuedTrack))
-      );
-      if (player.currentTrack?.id === trackId) {
-        setLyrics(null);
-        setIsLyricsLoading(false);
-        player.replaceCurrentTrack({ ...player.currentTrack, lyricsPath: null, hasLyrics: false });
-      }
-    },
-    [commitTracks, player]
-  );
-
   const removeTrackFromLibrary = useCallback(
     async (trackToRemove: Track) => {
       const currentQueueIndex = playlistTracks.findIndex((queuedTrack) => queuedTrack.id === trackToRemove.id);
@@ -750,27 +731,6 @@ export function App() {
       }
     },
     [editingTrack, replaceTrack]
-  );
-
-  const deleteTrackLyrics = useCallback(
-    async (track: Track) => {
-      setPendingMediaAction(true);
-      setAppError(null);
-      try {
-        const result = await window.musicApi.trashTrackLyrics(track);
-        if (!result.ok) {
-          setAppError(result.error);
-          return;
-        }
-        updateTrackLyricsState(track.id);
-      } catch (error) {
-        setAppError(error instanceof Error ? error.message : "无法将歌词移到废纸篓。");
-      } finally {
-        setPendingMediaAction(false);
-        setTrackMenu(null);
-      }
-    },
-    [updateTrackLyricsState]
   );
 
   const deleteTrackFiles = useCallback(
@@ -898,7 +858,6 @@ export function App() {
 
       {trackMenu ? (
         <TrackContextMenu
-          track={trackMenu.track}
           position={trackMenu.position}
           busy={pendingMediaAction}
           onClose={() => setTrackMenu(null)}
@@ -909,9 +868,6 @@ export function App() {
             setMetadataError(null);
             setEditingTrack(trackMenu.track);
             setTrackMenu(null);
-          }}
-          onDeleteLyrics={() => {
-            void deleteTrackLyrics(trackMenu.track);
           }}
           onDeleteTrack={() => {
             void deleteTrackFiles(trackMenu.track);

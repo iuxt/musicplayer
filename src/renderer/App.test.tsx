@@ -444,7 +444,7 @@ describe("App", () => {
     expect(within(screen.getByRole("region", { name: "音乐库浏览器" })).getByText("Wave Song")).toBeTruthy();
   });
 
-  it("opens the track context menu and disables lyric deletion when no lyrics exist", async () => {
+  it("opens the track context menu without lyric deletion", async () => {
     localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
 
@@ -461,7 +461,7 @@ describe("App", () => {
 
     expect(trackButton.className).toContain("context-menu-target");
     expect(screen.getByRole("menu")).toBeTruthy();
-    expect((screen.getByRole("menuitem", { name: "删除当前歌词" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole("menuitem", { name: "删除当前歌词" })).toBeNull();
   });
 
   it("saves edited metadata and updates visible track data", async () => {
@@ -492,7 +492,7 @@ describe("App", () => {
     expect(screen.getAllByText("Edited Album").length).toBeGreaterThan(0);
   });
 
-  it("trashes lyrics and clears lyric state for the track", async () => {
+  it("does not expose lyric deletion for tracks with lyrics", async () => {
     const trackWithLyrics = { ...track, lyricsPath: "/music/Wave Song.lrc", hasLyrics: true };
     localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify({ ...scanResult, tracks: [trackWithLyrics, secondTrack] }));
@@ -501,12 +501,9 @@ describe("App", () => {
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
     fireEvent.contextMenu(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "删除当前歌词" }));
 
-    await waitFor(() => expect(window.musicApi.trashTrackLyrics).toHaveBeenCalledWith(trackWithLyrics));
-    const cached = JSON.parse(localStorage.getItem(libraryCacheKey) ?? "{}") as ScanResult;
-    expect(cached.tracks[0].lyricsPath).toBeNull();
-    expect(cached.tracks[0].hasLyrics).toBe(false);
+    expect(screen.queryByRole("menuitem", { name: "删除当前歌词" })).toBeNull();
+    expect(window.musicApi.trashTrackLyrics).not.toHaveBeenCalled();
   });
 
   it("shows the disk filename in the track trash confirmation", async () => {
