@@ -236,6 +236,7 @@ export function useAudioPlayer(queue: Track[], initialPreferences: PlaybackPrefe
     if (audio) {
       audio.pause();
       audio.removeAttribute("src");
+      audio.load();
     }
     setCurrentTrack(null);
     setIsPlaying(false);

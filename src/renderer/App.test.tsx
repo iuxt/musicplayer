@@ -534,6 +534,12 @@ describe("App", () => {
         deleteEvents.push("pause");
       })
     });
+    Object.defineProperty(HTMLMediaElement.prototype, "load", {
+      configurable: true,
+      value: vi.fn(() => {
+        deleteEvents.push("load");
+      })
+    });
     window.musicApi.trashTrackFiles = vi.fn(async () => {
       deleteEvents.push("trash");
       return { ok: true, audioRemoved: true, trashed: [], failed: [], error: null };
@@ -551,7 +557,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "移到废纸篓" }));
 
     await waitFor(() => expect(window.musicApi.trashTrackFiles).toHaveBeenCalledWith(track));
-    expect(deleteEvents).toEqual(["pause", "trash"]);
+    expect(deleteEvents).toEqual(["pause", "load", "trash"]);
     expect(window.musicApi.getPlayableUrl).not.toHaveBeenCalledWith(folderTrack.filePath);
 
     confirmSpy.mockRestore();
