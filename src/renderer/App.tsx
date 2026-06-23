@@ -845,6 +845,7 @@ export function App() {
               category={activeCategory}
               tracks={visibleTracks}
               currentTrack={player.currentTrack}
+              contextMenuTrackId={trackMenu?.track.id ?? null}
               search={search}
               selectedFolderPath={selectedFolderPath}
               onSearchChange={setSearch}

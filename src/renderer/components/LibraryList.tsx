@@ -10,6 +10,7 @@ interface LibraryListProps {
   category: LibraryCategory;
   tracks: Track[];
   currentTrack: Track | null;
+  contextMenuTrackId?: string | null;
   search: string;
   selectedFolderPath: string | null;
   onSearchChange: (value: string) => void;
@@ -30,6 +31,7 @@ export const LibraryList = memo(function LibraryList({
   category,
   tracks,
   currentTrack,
+  contextMenuTrackId = null,
   search,
   selectedFolderPath,
   onSearchChange,
@@ -82,6 +84,7 @@ export const LibraryList = memo(function LibraryList({
           renderItem={(track, index) => (
             <TrackRow
               currentTrack={currentTrack}
+              contextMenuTrackId={contextMenuTrackId}
               index={index}
               onSelectTrack={onSelectTrack}
               onTrackContextMenu={onTrackContextMenu}
@@ -110,6 +113,7 @@ export const LibraryList = memo(function LibraryList({
             ) : (
               <TrackRow
                 currentTrack={currentTrack}
+                contextMenuTrackId={contextMenuTrackId}
                 index={index}
                 onSelectTrack={onSelectTrack}
                 onTrackContextMenu={onTrackContextMenu}
@@ -135,20 +139,27 @@ export const LibraryList = memo(function LibraryList({
 
 function TrackRow({
   currentTrack,
+  contextMenuTrackId,
   index,
   track,
   onSelectTrack,
   onTrackContextMenu
 }: {
   currentTrack: Track | null;
+  contextMenuTrackId: string | null;
   index: number;
   track: Track;
   onSelectTrack: (track: Track, queueTracks?: Track[]) => void;
   onTrackContextMenu: (track: Track, position: { x: number; y: number }) => void;
 }) {
+  const isActive = currentTrack?.id === track.id;
+  const isContextMenuTarget = contextMenuTrackId === track.id;
+
   return (
     <button
-      className={`track-row song-row ${currentTrack?.id === track.id ? "active" : ""}`}
+      className={["track-row", "song-row", isActive ? "active" : "", isContextMenuTarget ? "context-menu-target" : ""]
+        .filter(Boolean)
+        .join(" ")}
       onClick={() => onSelectTrack(track)}
       onContextMenu={(event) => {
         event.preventDefault();

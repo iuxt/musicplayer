@@ -451,11 +451,15 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
-    fireEvent.contextMenu(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }), {
+    const trackButton = screen.getByRole("button", { name: "02 Artist Folder Song Second Artist Loose Songs 3:00" });
+    expect(trackButton.className).not.toContain("active");
+
+    fireEvent.contextMenu(trackButton, {
       clientX: 40,
       clientY: 80
     });
 
+    expect(trackButton.className).toContain("context-menu-target");
     expect(screen.getByRole("menu")).toBeTruthy();
     expect((screen.getByRole("menuitem", { name: "删除当前歌词" }) as HTMLButtonElement).disabled).toBe(true);
   });

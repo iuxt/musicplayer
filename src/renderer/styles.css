@@ -543,7 +543,8 @@ button:disabled {
 }
 
 .track-row:hover,
-.track-row.active {
+.track-row.active,
+.track-row.context-menu-target {
   background: rgba(250, 35, 59, 0.09);
 }
 
