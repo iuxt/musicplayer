@@ -589,6 +589,15 @@ export function App() {
 
   const playTrack = useCallback(
     async (track: Track, queueTracks?: Track[]) => {
+      if (search.trim() && !queueTracks) {
+        if (!playlistTracks.some((queuedTrack) => queuedTrack.id === track.id)) {
+          setPlayQueue([...playlistTracks, track]);
+          setIsPlayQueueExplicit(true);
+        }
+        await player.playTrack(track);
+        return;
+      }
+
       const nextQueue =
         queueTracks ?? (activeCategory === "folders" ? getTracksAtFolderLevel(filteredTracks, selectedFolderPath) : filteredTracks);
       setPlayQueue(nextQueue);
@@ -596,7 +605,7 @@ export function App() {
       setPlaylistLabel(activeCategory === "folders" ? selectedFolderPath ?? DEFAULT_FOLDER_PLAYLIST_LABEL : DEFAULT_PLAYLIST_LABEL);
       await player.playTrack(track);
     },
-    [activeCategory, filteredTracks, player.playTrack, selectedFolderPath]
+    [activeCategory, filteredTracks, player.playTrack, playlistTracks, search, selectedFolderPath]
   );
 
   const selectPlaylistTrack = useCallback(async (track: Track) => {

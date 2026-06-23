@@ -444,6 +444,55 @@ describe("App", () => {
     expect(within(screen.getByRole("region", { name: "音乐库浏览器" })).getByText("Wave Song")).toBeTruthy();
   });
 
+  it("keeps the playlist intact when playing a search result already in the playlist", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    fireEvent.change(screen.getByPlaceholderText("搜索歌曲、歌手、专辑"), { target: { value: "Second Song" } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "01 Second Song Second Artist Second Album 3:00" }));
+    });
+
+    await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenCalledWith(secondTrack.filePath));
+
+    const playlist = screen.getByRole("region", { name: "播放列表" });
+    expect(within(playlist).getByRole("button", { name: "01 Wave Song Artist" })).toBeTruthy();
+    expect(within(playlist).getByRole("button", { name: "02 Artist Folder Song Second Artist" })).toBeTruthy();
+    expect(within(playlist).getByRole("button", { name: "03 Second Song Second Artist" })).toBeTruthy();
+    expect(within(playlist).getByRole("button", { name: "04 Third Song Second Artist" })).toBeTruthy();
+    expect(within(screen.getByRole("contentinfo")).getByText("Second Song")).toBeTruthy();
+  });
+
+  it("appends a missing search result to the end of the playlist before playing it", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    let playlist = screen.getByRole("region", { name: "播放列表" });
+    await act(async () => {
+      fireEvent.click(within(playlist).getByRole("button", { name: "从播放列表移除 Second Song" }));
+    });
+
+    fireEvent.change(screen.getByPlaceholderText("搜索歌曲、歌手、专辑"), { target: { value: "Second Song" } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "01 Second Song Second Artist Second Album 3:00" }));
+    });
+
+    await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenCalledWith(secondTrack.filePath));
+
+    playlist = screen.getByRole("region", { name: "播放列表" });
+    expect(within(playlist).getByRole("button", { name: "01 Wave Song Artist" })).toBeTruthy();
+    expect(within(playlist).getByRole("button", { name: "02 Artist Folder Song Second Artist" })).toBeTruthy();
+    expect(within(playlist).getByRole("button", { name: "03 Third Song Second Artist" })).toBeTruthy();
+    expect(within(playlist).getByRole("button", { name: "04 Second Song Second Artist" })).toBeTruthy();
+    expect(within(screen.getByRole("contentinfo")).getByText("Second Song")).toBeTruthy();
+  });
+
   it("opens the track context menu without lyric deletion", async () => {
     localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
