@@ -1,6 +1,14 @@
 import path from "node:path";
-import { describe, expect, it } from "vitest";
-import { getBuildPaths, getInstallCommand, getPackagerOptions, normalizeDarwinArch } from "./build-macos-app.mjs";
+import { describe, expect, it, vi } from "vitest";
+import {
+  DEFAULT_ELECTRON_MIRROR,
+  formatBuildError,
+  getBuildPaths,
+  getInstallCommand,
+  getPackagerOptions,
+  normalizeDarwinArch,
+  runPackagerWithElectronMirrorRetry
+} from "./build-macos-app.mjs";
 
 describe("build-macos-app helpers", () => {
   it("normalizes Node architecture names for Electron packaging", () => {
@@ -39,5 +47,47 @@ describe("build-macos-app helpers", () => {
     const options = getPackagerOptions("/repo", paths, "arm64");
 
     expect(options.quiet).toBe(true);
+  });
+
+  it("retries Electron packaging with a mirror when the default download fetch fails", async () => {
+    const attempts: unknown[] = [];
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    try {
+      await expect(
+        runPackagerWithElectronMirrorRetry(
+          { quiet: true },
+          async (options) => {
+            attempts.push(options);
+
+            if (attempts.length === 1) {
+              throw new TypeError("fetch failed");
+            }
+
+            return ["/tmp/音乐播放器.app"];
+          },
+          DEFAULT_ELECTRON_MIRROR
+        )
+      ).resolves.toEqual(["/tmp/音乐播放器.app"]);
+    } finally {
+      warn.mockRestore();
+    }
+
+    expect(attempts).toHaveLength(2);
+    expect(attempts[1]).toMatchObject({
+      download: {
+        mirrorOptions: {
+          mirror: DEFAULT_ELECTRON_MIRROR
+        }
+      }
+    });
+  });
+
+  it("formats build failures with the original stack and Electron download hint", () => {
+    const error = new TypeError("fetch failed");
+    error.stack = "TypeError: fetch failed\n    at downloadElectronZip";
+
+    expect(formatBuildError(error)).toContain("TypeError: fetch failed\n    at downloadElectronZip");
+    expect(formatBuildError(error)).toContain("ELECTRON_MIRROR");
   });
 });

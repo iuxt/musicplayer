@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+export const DEFAULT_ELECTRON_MIRROR = "https://npmmirror.com/mirrors/electron/";
 
 export function normalizeDarwinArch(arch = process.arch) {
   if (arch === "arm64" || arch === "x64") {
@@ -65,6 +66,75 @@ export function getPackagerOptions(projectRoot, paths, arch) {
   };
 }
 
+function getElectronMirror() {
+  return process.env.ELECTRON_MIRROR || process.env.npm_config_electron_mirror || DEFAULT_ELECTRON_MIRROR;
+}
+
+export function isFetchFailedError(error) {
+  const messages = [];
+  let current = error;
+
+  while (current) {
+    if (current instanceof Error) {
+      messages.push(current.message);
+      current = current.cause;
+      continue;
+    }
+
+    if (typeof current === "object" && current !== null && "message" in current) {
+      messages.push(String(current.message));
+      current = current.cause;
+      continue;
+    }
+
+    messages.push(String(current));
+    break;
+  }
+
+  return messages.some((message) => /fetch failed|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN/i.test(message));
+}
+
+export function getElectronMirrorPackagerOptions(options, mirror = getElectronMirror()) {
+  return {
+    ...options,
+    download: {
+      ...options.download,
+      mirrorOptions: {
+        ...options.download?.mirrorOptions,
+        mirror
+      }
+    }
+  };
+}
+
+export async function runPackagerWithElectronMirrorRetry(options, packagerFn = packager, mirror = getElectronMirror()) {
+  try {
+    return await packagerFn(options);
+  } catch (error) {
+    if (!isFetchFailedError(error)) {
+      throw error;
+    }
+
+    console.warn(`Electron 下载失败，正在通过镜像重试：${mirror}`);
+    return packagerFn(getElectronMirrorPackagerOptions(options, mirror));
+  }
+}
+
+export function formatBuildError(error) {
+  const details = error instanceof Error ? error.stack || error.message : String(error);
+
+  if (!isFetchFailedError(error)) {
+    return details;
+  }
+
+  return `${details}
+
+Electron 下载失败。可重试，或设置镜像后再执行：
+  ELECTRON_MIRROR=${DEFAULT_ELECTRON_MIRROR} npm run build:mac
+也可以清理 Electron 下载缓存后重试：
+  rm -rf ~/Library/Caches/electron`;
+}
+
 async function main() {
   if (process.platform !== "darwin") {
     throw new Error("此脚本仅支持在 macOS 上构建并安装应用。");
@@ -79,7 +149,7 @@ async function main() {
     await run("npm", ["run", "build"], projectRoot);
     await rm(paths.projectReleaseDir, { recursive: true, force: true });
 
-    await packager(getPackagerOptions(projectRoot, paths, arch));
+    await runPackagerWithElectronMirrorRetry(getPackagerOptions(projectRoot, paths, arch));
 
     await rm(paths.applicationsPath, { recursive: true, force: true });
     const install = getInstallCommand(paths.packagedAppPath, paths.applicationsPath);
@@ -112,7 +182,7 @@ function run(command, args, cwd) {
 
 if (process.argv[1] === __filename) {
   main().catch((error) => {
-    console.error(error instanceof Error ? error.message : error);
+    console.error(formatBuildError(error));
     process.exit(1);
   });
 }
