@@ -146,6 +146,31 @@ describe("useAudioPlayer", () => {
     expect(result.current.repeat).toBe("off");
   });
 
+  it("initializes playback preferences from saved values", () => {
+    const { result } = renderHook(() => useAudioPlayer(tracks, { volume: 0.35, shuffle: true, repeat: "all" }));
+
+    expect(result.current.volume).toBe(0.35);
+    expect(result.current.shuffle).toBe(true);
+    expect(result.current.repeat).toBe("all");
+    expect(createdAudioElements[0].volume).toBe(0.35);
+  });
+
+  it("returns normalized values when mutating playback preferences", () => {
+    const { result } = renderHook(() => useAudioPlayer(tracks, { volume: 0.35, shuffle: false, repeat: "off" }));
+
+    act(() => {
+      expect(result.current.setVolume(2)).toBe(1);
+    });
+    expect(result.current.volume).toBe(1);
+    expect(createdAudioElements[0].volume).toBe(1);
+
+    act(() => {
+      expect(result.current.cyclePlaybackMode()).toEqual({ shuffle: true, repeat: "off" });
+    });
+    expect(result.current.shuffle).toBe(true);
+    expect(result.current.repeat).toBe("off");
+  });
+
   it("stops playback and clears the current track", async () => {
     const { result } = renderHook(() => useAudioPlayer(tracks));
 

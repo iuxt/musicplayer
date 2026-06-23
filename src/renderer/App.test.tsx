@@ -900,6 +900,57 @@ describe("App", () => {
     await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenCalledWith(track.filePath));
   });
 
+  it("restores saved volume into the player", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+    localStorage.setItem(appSettingsKey, JSON.stringify({ ...defaultStoredSettings(), volume: 0.35 }));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    expect((screen.getByLabelText("音量") as HTMLInputElement).value).toBe("0.35");
+    expect(createdAudioElements[0].volume).toBe(0.35);
+  });
+
+  it("persists volume changes", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    fireEvent.change(screen.getByLabelText("音量"), { target: { value: "0.44" } });
+
+    expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toMatchObject({ volume: 0.44 });
+    expect(createdAudioElements[0].volume).toBe(0.44);
+  });
+
+  it("restores saved playback mode", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+    localStorage.setItem(appSettingsKey, JSON.stringify({ ...defaultStoredSettings(), shuffle: true, repeat: "off" }));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "播放模式：随机播放" })).toBeTruthy());
+  });
+
+  it("persists playback mode changes", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole("button", { name: "播放模式：关闭" }));
+
+    expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toMatchObject({ shuffle: true, repeat: "off" });
+
+    fireEvent.click(screen.getByRole("button", { name: "播放模式：随机播放" }));
+
+    expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toMatchObject({ shuffle: false, repeat: "all" });
+  });
+
   it("persists fullscreen lyrics font size and applies it to fullscreen lyrics", async () => {
     const trackWithLyrics = { ...track, lyricsPath: "/music/Wave Song.lrc", hasLyrics: true };
     localStorage.setItem("musicplayer:last-folder", rememberedFolder);
@@ -919,7 +970,10 @@ describe("App", () => {
       closeWindowStopsPlayback: false,
       desktopLyricsEnabled: false,
       desktopLyricsFontFamily: "",
-      desktopLyricsFontSize: 28
+      desktopLyricsFontSize: 28,
+      volume: 0.82,
+      shuffle: false,
+      repeat: "off"
     });
 
     fireEvent.click(screen.getByRole("button", { name: "歌曲" }));
@@ -974,6 +1028,9 @@ function defaultStoredSettings() {
     closeWindowStopsPlayback: false,
     desktopLyricsEnabled: false,
     desktopLyricsFontFamily: "",
-    desktopLyricsFontSize: 28
+    desktopLyricsFontSize: 28,
+    volume: 0.82,
+    shuffle: false,
+    repeat: "off"
   };
 }

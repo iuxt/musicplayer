@@ -136,7 +136,11 @@ export function App() {
   const playlistTrackIds = useMemo(() => playlistTracks.map((track) => track.id), [playlistTracks]);
   const playlistQueueKey = useMemo(() => playlistTrackIds.join("\u0000"), [playlistTrackIds]);
 
-  const player = useAudioPlayer(playlistTracks);
+  const player = useAudioPlayer(playlistTracks, {
+    volume: appSettings.volume,
+    shuffle: appSettings.shuffle,
+    repeat: appSettings.repeat
+  });
   const playerRef = useRef(player);
   playerRef.current = player;
 
@@ -216,6 +220,19 @@ export function App() {
     },
     [commitAppSettings]
   );
+
+  const changeVolume = useCallback(
+    (volume: number) => {
+      const nextVolume = player.setVolume(volume);
+      commitAppSettings((currentSettings) => ({ ...currentSettings, volume: nextVolume }));
+    },
+    [commitAppSettings, player.setVolume]
+  );
+
+  const changePlaybackMode = useCallback(() => {
+    const nextMode = player.cyclePlaybackMode();
+    commitAppSettings((currentSettings) => ({ ...currentSettings, ...nextMode }));
+  }, [commitAppSettings, player.cyclePlaybackMode]);
 
   const openSettings = useCallback(() => {
     setActiveView("settings");
@@ -934,8 +951,8 @@ export function App() {
           void player.next();
         }}
         onSeek={player.seek}
-        onVolume={player.setVolume}
-        onPlaybackMode={player.cyclePlaybackMode}
+        onVolume={changeVolume}
+        onPlaybackMode={changePlaybackMode}
       />
     </div>
   );

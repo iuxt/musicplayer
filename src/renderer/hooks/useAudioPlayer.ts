@@ -1,9 +1,22 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Track } from "../../shared/types";
+import { DEFAULT_VOLUME, type RepeatMode } from "../appSettings";
 
-export type RepeatMode = "off" | "all" | "one";
+export type { RepeatMode };
 
-export function useAudioPlayer(queue: Track[]) {
+export interface PlaybackPreferences {
+  volume: number;
+  shuffle: boolean;
+  repeat: RepeatMode;
+}
+
+const DEFAULT_PLAYBACK_PREFERENCES: PlaybackPreferences = {
+  volume: DEFAULT_VOLUME,
+  shuffle: false,
+  repeat: "off"
+};
+
+export function useAudioPlayer(queue: Track[], initialPreferences: PlaybackPreferences = DEFAULT_PLAYBACK_PREFERENCES) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const nextRef = useRef<() => Promise<void>>(async () => undefined);
   const playbackGenerationRef = useRef(0);
@@ -13,9 +26,9 @@ export function useAudioPlayer(queue: Track[]) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [volume, setVolumeState] = useState(0.82);
-  const [shuffle, setShuffle] = useState(false);
-  const [repeat, setRepeat] = useState<RepeatMode>("off");
+  const [volume, setVolumeState] = useState(() => clampVolume(initialPreferences.volume));
+  const [shuffle, setShuffle] = useState(initialPreferences.shuffle);
+  const [repeat, setRepeat] = useState<RepeatMode>(initialPreferences.repeat);
   const [playbackError, setPlaybackError] = useState<string | null>(null);
 
   const currentIndex = useMemo(() => {
@@ -193,11 +206,12 @@ export function useAudioPlayer(queue: Track[]) {
   }, []);
 
   const setVolume = useCallback((nextVolume: number) => {
-    const clamped = Math.min(1, Math.max(0, nextVolume));
+    const clamped = clampVolume(nextVolume);
     if (audioRef.current) {
       audioRef.current.volume = clamped;
     }
     setVolumeState(clamped);
+    return clamped;
   }, []);
 
   const toggleShuffle = useCallback(() => setShuffle((value) => !value), []);
@@ -205,18 +219,15 @@ export function useAudioPlayer(queue: Track[]) {
     setRepeat((mode) => (mode === "off" ? "all" : mode === "all" ? "one" : "off"));
   }, []);
   const cyclePlaybackMode = useCallback(() => {
-    if (shuffle) {
-      setShuffle(false);
-      setRepeat("all");
-      return;
-    }
+    const nextMode =
+      shuffle ? { shuffle: false, repeat: "all" as const }
+      : repeat === "off" ? { shuffle: true, repeat: "off" as const }
+      : repeat === "all" ? { shuffle: false, repeat: "one" as const }
+      : { shuffle: false, repeat: "off" as const };
 
-    if (repeat === "off") {
-      setShuffle(true);
-      return;
-    }
-
-    setRepeat((mode) => (mode === "all" ? "one" : "off"));
+    setShuffle(nextMode.shuffle);
+    setRepeat(nextMode.repeat);
+    return nextMode;
   }, [repeat, shuffle]);
 
   const stop = useCallback(() => {
@@ -261,18 +272,26 @@ export function useAudioPlayer(queue: Track[]) {
   };
 }
 
+function clampVolume(value: number) {
+  return Math.min(1, Math.max(0, Number.isFinite(value) ? value : DEFAULT_VOLUME));
+}
+
 function randomQueueIndex(length: number, currentIndex: number) {
   if (length <= 1) {
     return 0;
   }
 
-  let index = currentIndex;
-  while (index === currentIndex) {
-    index = Math.floor(Math.random() * length);
+  let nextIndex = currentIndex;
+  while (nextIndex === currentIndex) {
+    nextIndex = Math.floor(Math.random() * length);
   }
-  return index;
+  return nextIndex;
 }
 
 function hasPlaybackReachedEnd(audio: HTMLAudioElement) {
-  return Number.isFinite(audio.duration) && audio.duration > 0 && audio.currentTime >= audio.duration;
+  if (!Number.isFinite(audio.duration) || audio.duration <= 0) {
+    return false;
+  }
+
+  return audio.currentTime >= audio.duration;
 }

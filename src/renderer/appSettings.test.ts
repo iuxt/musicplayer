@@ -114,8 +114,98 @@ describe("appSettings", () => {
       closeWindowStopsPlayback: true,
       desktopLyricsEnabled: true,
       desktopLyricsFontFamily: "LXGW WenKai",
-      desktopLyricsFontSize: MAX_DESKTOP_LYRICS_FONT_SIZE
+      desktopLyricsFontSize: MAX_DESKTOP_LYRICS_FONT_SIZE,
+      volume: 0.82,
+      shuffle: false,
+      repeat: "off"
     });
+  });
+
+  it("reads and writes playback preferences", () => {
+    const storage = makeStorage({
+      [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
+        ...DEFAULT_APP_SETTINGS,
+        volume: 0.42,
+        shuffle: true,
+        repeat: "all"
+      })
+    });
+
+    expect(readAppSettings(storage)).toEqual({
+      ...DEFAULT_APP_SETTINGS,
+      volume: 0.42,
+      shuffle: true,
+      repeat: "all"
+    });
+
+    writeAppSettings(
+      {
+        ...DEFAULT_APP_SETTINGS,
+        volume: 0.64,
+        shuffle: false,
+        repeat: "one"
+      },
+      storage
+    );
+
+    expect(storage.setItem).toHaveBeenCalledWith(
+      APP_SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        ...DEFAULT_APP_SETTINGS,
+        volume: 0.64,
+        shuffle: false,
+        repeat: "one"
+      })
+    );
+  });
+
+  it("fills missing playback preferences with defaults for legacy settings", () => {
+    const storage = makeStorage({
+      [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
+        fullscreenLyricsFontFamily: "",
+        fullscreenLyricsFontSize: 36,
+        systemMediaShortcutsEnabled: false,
+        closeWindowStopsPlayback: false,
+        desktopLyricsEnabled: false,
+        desktopLyricsFontFamily: "",
+        desktopLyricsFontSize: 28
+      })
+    });
+
+    expect(readAppSettings(storage)).toEqual(DEFAULT_APP_SETTINGS);
+  });
+
+  it("returns defaults for invalid persisted playback preferences", () => {
+    expect(
+      readAppSettings(
+        makeStorage({
+          [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
+            ...DEFAULT_APP_SETTINGS,
+            volume: 2
+          })
+        })
+      )
+    ).toEqual(DEFAULT_APP_SETTINGS);
+    expect(
+      readAppSettings(
+        makeStorage({
+          [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
+            ...DEFAULT_APP_SETTINGS,
+            shuffle: "yes"
+          })
+        })
+      )
+    ).toEqual(DEFAULT_APP_SETTINGS);
+    expect(
+      readAppSettings(
+        makeStorage({
+          [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
+            ...DEFAULT_APP_SETTINGS,
+            repeat: "repeat"
+          })
+        })
+      )
+    ).toEqual(DEFAULT_APP_SETTINGS);
   });
 
   it("reads and writes the system media shortcut setting", () => {
@@ -216,7 +306,10 @@ describe("appSettings", () => {
         closeWindowStopsPlayback: false,
         desktopLyricsEnabled: true,
         desktopLyricsFontFamily: "  LXGW WenKai  ",
-        desktopLyricsFontSize: MIN_DESKTOP_LYRICS_FONT_SIZE + 0.4
+        desktopLyricsFontSize: MIN_DESKTOP_LYRICS_FONT_SIZE + 0.4,
+        volume: 0.82,
+        shuffle: false,
+        repeat: "off"
       },
       storage
     );
@@ -230,7 +323,10 @@ describe("appSettings", () => {
         closeWindowStopsPlayback: false,
         desktopLyricsEnabled: true,
         desktopLyricsFontFamily: "LXGW WenKai",
-        desktopLyricsFontSize: MIN_DESKTOP_LYRICS_FONT_SIZE
+        desktopLyricsFontSize: MIN_DESKTOP_LYRICS_FONT_SIZE,
+        volume: 0.82,
+        shuffle: false,
+        repeat: "off"
       })
     );
   });
@@ -248,7 +344,10 @@ describe("appSettings", () => {
       closeWindowStopsPlayback: false,
       desktopLyricsEnabled: false,
       desktopLyricsFontFamily: "",
-      desktopLyricsFontSize: 28
+      desktopLyricsFontSize: 28,
+      volume: 0.82,
+      shuffle: false,
+      repeat: "off"
     });
     expect(readAppSettings(makeStorage())).toEqual(DEFAULT_APP_SETTINGS);
   });

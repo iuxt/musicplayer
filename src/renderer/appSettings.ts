@@ -3,6 +3,9 @@ export const MIN_FULLSCREEN_LYRICS_FONT_SIZE = 24;
 export const MAX_FULLSCREEN_LYRICS_FONT_SIZE = 56;
 export const MIN_DESKTOP_LYRICS_FONT_SIZE = 18;
 export const MAX_DESKTOP_LYRICS_FONT_SIZE = 44;
+export const DEFAULT_VOLUME = 0.82;
+
+export type RepeatMode = "off" | "all" | "one";
 
 export interface AppSettings {
   fullscreenLyricsFontFamily: string;
@@ -12,6 +15,9 @@ export interface AppSettings {
   desktopLyricsEnabled: boolean;
   desktopLyricsFontFamily: string;
   desktopLyricsFontSize: number;
+  volume: number;
+  shuffle: boolean;
+  repeat: RepeatMode;
 }
 
 export const DEFAULT_APP_SETTINGS: AppSettings = {
@@ -21,7 +27,10 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   closeWindowStopsPlayback: false,
   desktopLyricsEnabled: false,
   desktopLyricsFontFamily: "",
-  desktopLyricsFontSize: 28
+  desktopLyricsFontSize: 28,
+  volume: DEFAULT_VOLUME,
+  shuffle: false,
+  repeat: "off"
 };
 
 type SettingsStorage = Pick<Storage, "getItem" | "setItem">;
@@ -96,13 +105,19 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     "closeWindowStopsPlayback",
     DEFAULT_APP_SETTINGS.closeWindowStopsPlayback
   );
+  const volume = normalizeVolume(getValueOrDefault(value, "volume", DEFAULT_APP_SETTINGS.volume));
+  const shuffle = getValueOrDefault(value, "shuffle", DEFAULT_APP_SETTINGS.shuffle);
+  const repeat = getValueOrDefault(value, "repeat", DEFAULT_APP_SETTINGS.repeat);
 
   if (
     typeof fullscreenFontFamily !== "string" ||
     typeof desktopFontFamily !== "string" ||
     typeof desktopLyricsEnabled !== "boolean" ||
     typeof systemMediaShortcutsEnabled !== "boolean" ||
-    typeof closeWindowStopsPlayback !== "boolean"
+    typeof closeWindowStopsPlayback !== "boolean" ||
+    volume === null ||
+    typeof shuffle !== "boolean" ||
+    !isRepeatMode(repeat)
   ) {
     return defaultAppSettings();
   }
@@ -114,7 +129,10 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     closeWindowStopsPlayback,
     desktopLyricsEnabled,
     desktopLyricsFontFamily: desktopFontFamily.trim(),
-    desktopLyricsFontSize: desktopFontSize
+    desktopLyricsFontSize: desktopFontSize,
+    volume,
+    shuffle,
+    repeat
   };
 }
 
@@ -132,6 +150,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function getValueOrDefault(value: Record<string, unknown>, key: string, defaultValue: unknown) {
   return Object.prototype.hasOwnProperty.call(value, key) ? value[key] : defaultValue;
+}
+
+function normalizeVolume(value: unknown) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) {
+    return null;
+  }
+
+  return value;
+}
+
+function isRepeatMode(value: unknown): value is RepeatMode {
+  return value === "off" || value === "all" || value === "one";
 }
 
 function defaultAppSettings(): AppSettings {
