@@ -658,7 +658,7 @@ export function App() {
           setLyrics(null);
           setArtworkUrl(null);
           setIsLyricsLoading(false);
-          currentPlayer.stop();
+          await currentPlayer.stop();
         }
         return;
       }
@@ -671,7 +671,7 @@ export function App() {
       setArtworkUrl(null);
       setIsLyricsLoading(false);
       if (!nextTrack) {
-        currentPlayer.stop();
+        await currentPlayer.stop();
         return;
       }
 
@@ -749,7 +749,7 @@ export function App() {
         setLyrics(null);
         setArtworkUrl(null);
         setIsLyricsLoading(false);
-        player.stop();
+        await player.stop();
       }
 
       try {

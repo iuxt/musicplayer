@@ -528,6 +528,7 @@ describe("App", () => {
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
     const deleteEvents: string[] = [];
+    let mediaReleased = false;
     Object.defineProperty(HTMLMediaElement.prototype, "pause", {
       configurable: true,
       value: vi.fn(() => {
@@ -538,10 +539,14 @@ describe("App", () => {
       configurable: true,
       value: vi.fn(() => {
         deleteEvents.push("load");
+        window.setTimeout(() => {
+          mediaReleased = true;
+          deleteEvents.push("released");
+        }, 0);
       })
     });
     window.musicApi.trashTrackFiles = vi.fn(async () => {
-      deleteEvents.push("trash");
+      deleteEvents.push(mediaReleased ? "trash-after-release" : "trash-before-release");
       return { ok: true, audioRemoved: true, trashed: [], failed: [], error: null };
     });
 
@@ -557,7 +562,7 @@ describe("App", () => {
     fireEvent.click(screen.getByRole("menuitem", { name: "移到废纸篓" }));
 
     await waitFor(() => expect(window.musicApi.trashTrackFiles).toHaveBeenCalledWith(track));
-    expect(deleteEvents).toEqual(["pause", "load", "trash"]);
+    expect(deleteEvents).toEqual(["pause", "load", "released", "trash-after-release"]);
     expect(window.musicApi.getPlayableUrl).not.toHaveBeenCalledWith(folderTrack.filePath);
 
     confirmSpy.mockRestore();

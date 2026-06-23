@@ -230,18 +230,24 @@ export function useAudioPlayer(queue: Track[], initialPreferences: PlaybackPrefe
     return nextMode;
   }, [repeat, shuffle]);
 
-  const stop = useCallback(() => {
+  const stop = useCallback(async () => {
     const audio = audioRef.current;
     shouldAutoSelectRef.current = false;
+    let shouldWaitForSourceRelease = false;
     if (audio) {
       audio.pause();
       audio.removeAttribute("src");
       audio.load();
+      shouldWaitForSourceRelease = true;
     }
     setCurrentTrack(null);
     setIsPlaying(false);
     setCurrentTime(0);
     setDuration(0);
+
+    if (shouldWaitForSourceRelease) {
+      await waitForAudioSourceRelease();
+    }
   }, []);
 
   const replaceCurrentTrack = useCallback((track: Track) => {
@@ -275,6 +281,12 @@ export function useAudioPlayer(queue: Track[], initialPreferences: PlaybackPrefe
 
 function clampVolume(value: number) {
   return Math.min(1, Math.max(0, Number.isFinite(value) ? value : DEFAULT_VOLUME));
+}
+
+function waitForAudioSourceRelease() {
+  return new Promise<void>((resolve) => {
+    setTimeout(resolve, 0);
+  });
 }
 
 function randomQueueIndex(length: number, currentIndex: number) {
