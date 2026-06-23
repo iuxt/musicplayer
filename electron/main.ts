@@ -164,7 +164,7 @@ async function showDesktopLyricsWindow() {
 
   desktopLyricsWindow.on("closed", () => {
     desktopLyricsWindow = null;
-    if (mainWindow && !mainWindow.isDestroyed()) {
+    if (!isQuitting && mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send("desktop-lyrics:closed");
     }
   });

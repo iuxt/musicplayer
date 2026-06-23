@@ -46,6 +46,13 @@ describe("Electron desktop lyrics window", () => {
     expect(mainSource).toContain("setTimeout(() => closeDesktopLyricsWindow(), 0)");
   });
 
+  it("does not report desktop lyrics as manually closed while the app is quitting", async () => {
+    const mainSource = await readFile(path.join(process.cwd(), "electron/main.ts"), "utf8");
+
+    expect(mainSource).toContain("!isQuitting && mainWindow && !mainWindow.isDestroyed()");
+    expect(mainSource).toContain('mainWindow.webContents.send("desktop-lyrics:closed")');
+  });
+
   it("hides the main window on macOS close unless the stop-playback setting is enabled", async () => {
     const mainSource = await readFile(path.join(process.cwd(), "electron/main.ts"), "utf8");
 
