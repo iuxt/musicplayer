@@ -47,6 +47,11 @@ beforeEach(() => {
   window.musicApi = {
     chooseMusicFolder: vi.fn(),
     rescanLibrary: vi.fn(async () => scanResult),
+    readLibraryCache: vi.fn(async () => readTestLibraryCache()),
+    writeLibraryCache: vi.fn(async () => undefined),
+    clearLibraryCache: vi.fn(async () => {
+      localStorage.removeItem(libraryCacheKey);
+    }),
     getPlayableUrl: vi.fn(async (filePath: string) => `file://${filePath}`),
     getArtworkUrl: vi.fn(async () => null),
     getLyrics: vi.fn(async () => null),
@@ -90,8 +95,18 @@ describe("App", () => {
   it("renders a dedicated window drag region at the top of the app", async () => {
     render(<App />);
 
-    await waitFor(() => expect(window.musicApi.listSystemFonts).toHaveBeenCalled());
+    expect(window.musicApi.listSystemFonts).not.toHaveBeenCalled();
     expect(document.querySelector(".window-drag-region")?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("loads system fonts only after opening settings", async () => {
+    render(<App />);
+
+    expect(window.musicApi.listSystemFonts).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "设置" }));
+
+    await waitFor(() => expect(window.musicApi.listSystemFonts).toHaveBeenCalledTimes(1));
+    expect(screen.getAllByRole("option", { name: "PingFang SC" }).length).toBeGreaterThan(0);
   });
 
   it("loads the cached remembered folder on startup without rescanning", async () => {
@@ -121,7 +136,7 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => expect(window.musicApi.rescanLibrary).toHaveBeenCalledWith(rememberedFolder));
-    await waitFor(() => expect(localStorage.getItem(libraryCacheKey)).toBe(JSON.stringify(scanResult)));
+    await waitFor(() => expect(window.musicApi.writeLibraryCache).toHaveBeenCalledWith(scanResult));
   });
 
   it("rescans the remembered folder on startup when no cache exists", async () => {
@@ -130,7 +145,54 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => expect(window.musicApi.rescanLibrary).toHaveBeenCalledWith(rememberedFolder));
-    await waitFor(() => expect(localStorage.getItem(libraryCacheKey)).toBe(JSON.stringify(scanResult)));
+    await waitFor(() => expect(window.musicApi.writeLibraryCache).toHaveBeenCalledWith(scanResult));
+    expect(localStorage.getItem(libraryCacheKey)).toBeNull();
+  });
+
+  it("keeps a scanned library visible when the main cache write fails", async () => {
+    window.musicApi.chooseMusicFolder = vi.fn(async () => scanResult);
+    window.musicApi.writeLibraryCache = vi.fn(async () => {
+      throw new Error("disk full");
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getAllByText("选择文件夹")[0]);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    expect(screen.getByText("无法保存音乐库缓存。")).toBeTruthy();
+  });
+
+  it("handles selected-track artwork lookup failures without an unhandled rejection", async () => {
+    const trackWithArtwork = {
+      ...track,
+      artworkId: "artwork-1",
+      artworkPath: "/music/missing-cover.jpg"
+    };
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify({ ...scanResult, tracks: [trackWithArtwork, secondTrack] }));
+    window.musicApi.getArtworkUrl = vi.fn(async () => {
+      throw new Error("missing artwork");
+    });
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    });
+
+    await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenCalledWith(trackWithArtwork.filePath));
+    expect(screen.queryByText("missing artwork")).toBeNull();
+  });
+
+  it("shows a controlled error when desktop lyrics close fails", async () => {
+    window.musicApi.closeDesktopLyrics = vi.fn(async () => {
+      throw new Error("close failed");
+    });
+
+    render(<App />);
+
+    expect(await screen.findByText("无法关闭桌面歌词。")).toBeTruthy();
   });
 
   it("restores the last played track and position on startup without autoplaying", async () => {
@@ -329,7 +391,7 @@ describe("App", () => {
     });
 
     await waitFor(() => expect(window.musicApi.rescanLibrary).toHaveBeenCalledWith(rememberedFolder));
-    expect(localStorage.getItem(libraryCacheKey)).toBe(JSON.stringify(scanResult));
+    expect(window.musicApi.writeLibraryCache).toHaveBeenCalledWith(scanResult);
   });
 
   it("opens settings from the desktop lyrics menu command", async () => {
@@ -503,9 +565,11 @@ describe("App", () => {
     const trackButton = screen.getByRole("button", { name: "02 Artist Folder Song Second Artist Loose Songs 3:00" });
     expect(trackButton.className).not.toContain("active");
 
-    fireEvent.contextMenu(trackButton, {
-      clientX: 40,
-      clientY: 80
+    await act(async () => {
+      fireEvent.contextMenu(trackButton, {
+        clientX: 40,
+        clientY: 80
+      });
     });
 
     expect(trackButton.className).toContain("context-menu-target");
@@ -520,7 +584,9 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
-    fireEvent.contextMenu(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    await act(async () => {
+      fireEvent.contextMenu(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    });
     fireEvent.click(screen.getByRole("menuitem", { name: "编辑音乐信息" }));
     fireEvent.change(screen.getByLabelText("标题"), { target: { value: "Edited Song" } });
     fireEvent.change(screen.getByLabelText("歌手"), { target: { value: "Edited Artist" } });
@@ -549,7 +615,10 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
-    fireEvent.contextMenu(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    await act(async () => {
+      fireEvent.contextMenu(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    });
+    await waitFor(() => expect(screen.getByRole("menu")).toBeTruthy());
 
     expect(screen.queryByRole("menuitem", { name: "删除当前歌词" })).toBeNull();
     expect(window.musicApi.trashTrackLyrics).not.toHaveBeenCalled();
@@ -563,8 +632,13 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
-    fireEvent.contextMenu(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
-    fireEvent.click(screen.getByRole("menuitem", { name: "移到废纸篓" }));
+    await act(async () => {
+      fireEvent.contextMenu(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    });
+    await waitFor(() => expect(screen.getByRole("menu")).toBeTruthy());
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: "移到废纸篓" }));
+    });
 
     expect(confirmSpy).toHaveBeenCalledWith("将把音乐文件“Wave Song.wav”以及同名歌词、同名封面移到废纸篓。是否继续？");
     expect(window.musicApi.trashTrackFiles).not.toHaveBeenCalled();
@@ -729,6 +803,7 @@ describe("App", () => {
     expect(screen.queryByText(rememberedFolder)).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    await waitFor(() => expect(screen.getAllByRole("option", { name: "PingFang SC" }).length).toBeGreaterThan(0));
 
     expect(screen.getByText(rememberedFolder)).toBeTruthy();
   });
@@ -751,12 +826,13 @@ describe("App", () => {
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
     fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    await waitFor(() => expect(screen.getAllByRole("option", { name: "PingFang SC" }).length).toBeGreaterThan(0));
     fireEvent.click(screen.getByRole("button", { name: "清除音乐库缓存" }));
 
-    expect(localStorage.getItem(libraryCacheKey)).toBeNull();
+    expect(window.musicApi.clearLibraryCache).toHaveBeenCalled();
     expect(localStorage.getItem("musicplayer:last-folder")).toBe(rememberedFolder);
     expect(localStorage.getItem(playbackStateKey)).not.toBeNull();
-    expect(screen.getByText("音乐库缓存已清除。")).toBeTruthy();
+    expect(await screen.findByText("音乐库缓存已清除。")).toBeTruthy();
   });
 
   it("loads system fonts for lyric font controls", async () => {
@@ -765,9 +841,10 @@ describe("App", () => {
 
     render(<App />);
 
-    await waitFor(() => expect(window.musicApi.listSystemFonts).toHaveBeenCalled());
+    expect(window.musicApi.listSystemFonts).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "设置" }));
 
+    await waitFor(() => expect(window.musicApi.listSystemFonts).toHaveBeenCalledTimes(1));
     expect(screen.getAllByRole("option", { name: "PingFang SC" }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole("option", { name: "LXGW WenKai" }).length).toBeGreaterThan(0);
   });
@@ -782,6 +859,7 @@ describe("App", () => {
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
     fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    await waitFor(() => expect(screen.getAllByRole("option", { name: "PingFang SC" }).length).toBeGreaterThan(0));
     fireEvent.change(screen.getByLabelText("全屏歌词字体"), { target: { value: "PingFang SC" } });
     fireEvent.change(screen.getByLabelText("全屏歌词字号"), { target: { value: "48" } });
 
@@ -812,6 +890,7 @@ describe("App", () => {
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
     fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    await waitFor(() => expect(screen.getAllByRole("option", { name: "LXGW WenKai" }).length).toBeGreaterThan(0));
     fireEvent.change(screen.getByLabelText("桌面歌词字体"), { target: { value: "LXGW WenKai" } });
     fireEvent.change(screen.getByLabelText("桌面歌词字号"), { target: { value: "32" } });
     fireEvent.click(screen.getByLabelText("显示桌面歌词"));
@@ -976,7 +1055,9 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
-    fireEvent.change(screen.getByLabelText("音量"), { target: { value: "0.44" } });
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("音量"), { target: { value: "0.44" } });
+    });
 
     expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toMatchObject({ volume: 0.44 });
     expect(createdAudioElements[0].volume).toBe(0.44);
@@ -999,11 +1080,15 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
-    fireEvent.click(screen.getByRole("button", { name: "播放模式：关闭" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "播放模式：关闭" }));
+    });
 
     expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toMatchObject({ shuffle: true, repeat: "off" });
 
-    fireEvent.click(screen.getByRole("button", { name: "播放模式：随机播放" }));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "播放模式：随机播放" }));
+    });
 
     expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toMatchObject({ shuffle: false, repeat: "all" });
   });
@@ -1048,8 +1133,9 @@ describe("App", () => {
     localStorage.setItem(appSettingsKey, JSON.stringify({ fullscreenLyricsFontSize: 72 }));
 
     render(<App />);
-    await waitFor(() => expect(window.musicApi.listSystemFonts).toHaveBeenCalled());
+    expect(window.musicApi.listSystemFonts).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "设置" }));
+    await waitFor(() => expect(window.musicApi.listSystemFonts).toHaveBeenCalledTimes(1));
 
     expect((screen.getByLabelText("全屏歌词字号") as HTMLInputElement).value).toBe("36");
   });
@@ -1075,6 +1161,11 @@ function makeTrack(id: string, title: string, artist: string, album: string, fol
 
 function playbackStateWriteCount(spy: ReturnType<typeof vi.spyOn>) {
   return spy.mock.calls.filter(([key]) => key === playbackStateKey).length;
+}
+
+function readTestLibraryCache(): ScanResult | null {
+  const cachedValue = localStorage.getItem(libraryCacheKey);
+  return cachedValue ? (JSON.parse(cachedValue) as ScanResult) : null;
 }
 
 function defaultStoredSettings() {

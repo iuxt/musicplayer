@@ -17,4 +17,13 @@ describe("source index.html", () => {
 
     expect(source).toContain('<link rel="icon" type="image/svg+xml" href="/favicon.svg" />');
   });
+
+  it("declares a restrictive Electron content security policy", async () => {
+    const source = await readFile(path.join(process.cwd(), "index.html"), "utf8");
+
+    expect(source).toContain('http-equiv="Content-Security-Policy"');
+    expect(source).toContain("default-src 'self'");
+    expect(source).toContain("script-src 'self'");
+    expect(source).not.toContain("unsafe-eval");
+  });
 });

@@ -14,11 +14,12 @@ import {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readLyricsFile, toExistingOptionalFileUrl, toMediaFileUrl } from "../src/main/fileUrls.js";
+import { clearLibraryCacheFile, readLibraryCacheFile, writeLibraryCacheFile } from "../src/main/libraryCache.js";
 import { writeTrackMetadata } from "../src/main/metadataWriter.js";
 import { scanMusicFolder } from "../src/main/scanner.js";
 import { listSystemFonts } from "../src/main/systemFonts.js";
 import { trashFileWithFallback, trashTrackFiles, trashTrackLyrics } from "../src/main/trackFileActions.js";
-import type { DesktopLyricsPayload, Track, TrackMetadataUpdate } from "../src/shared/types.js";
+import type { DesktopLyricsPayload, ScanResult, Track, TrackMetadataUpdate } from "../src/shared/types.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -288,6 +289,18 @@ function registerIpc() {
     });
   });
 
+  ipcMain.handle("library:read-cache", () => {
+    return readLibraryCacheFile(getLibraryCachePath());
+  });
+
+  ipcMain.handle("library:write-cache", (_event, result: ScanResult) => {
+    return writeLibraryCacheFile(getLibraryCachePath(), result);
+  });
+
+  ipcMain.handle("library:clear-cache", () => {
+    return clearLibraryCacheFile(getLibraryCachePath());
+  });
+
   ipcMain.handle("media:get-playable-url", (_event, filePath: string) => {
     return toMediaFileUrl(filePath);
   });
@@ -358,6 +371,10 @@ function registerIpc() {
 
 function getArtworkCacheDir() {
   return path.join(app.getPath("userData"), "artwork");
+}
+
+function getLibraryCachePath() {
+  return path.join(app.getPath("userData"), "library-cache.json");
 }
 
 async function createWindow() {

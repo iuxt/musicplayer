@@ -24,6 +24,9 @@ beforeEach(() => {
   window.musicApi = {
     chooseMusicFolder: vi.fn(),
     rescanLibrary: vi.fn(),
+    readLibraryCache: vi.fn(async () => null),
+    writeLibraryCache: vi.fn(async () => undefined),
+    clearLibraryCache: vi.fn(async () => undefined),
     getPlayableUrl: vi.fn(),
     getArtworkUrl: vi.fn(),
     getLyrics: vi.fn(),
@@ -94,5 +97,31 @@ describe("DesktopLyricsWindow", () => {
     });
 
     expect(window.musicApi.resizeDesktopLyrics).toHaveBeenCalledWith(249, 73);
+  });
+
+  it("handles resize IPC failures without throwing an unhandled rejection", async () => {
+    window.musicApi.resizeDesktopLyrics = vi.fn(async () => {
+      throw new Error("resize failed");
+    });
+    render(<DesktopLyricsWindow />);
+
+    const surface = screen.getByRole("region", { name: "桌面歌词" });
+    vi.spyOn(surface, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      width: 200,
+      height: 80,
+      top: 0,
+      right: 200,
+      bottom: 80,
+      left: 0,
+      toJSON: () => ({})
+    });
+
+    await act(async () => {
+      resizeObserverCallback?.([], {} as ResizeObserver);
+    });
+
+    expect(window.musicApi.resizeDesktopLyrics).toHaveBeenCalledWith(200, 80);
   });
 });

@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, stat, utimes, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -119,5 +119,31 @@ describe("scanMusicFolder", () => {
     expect(path.dirname(artworkPath)).toBe(artworkCacheDir);
     expect(artworkPath).toMatch(/\.png$/);
     await expect(readFile(artworkPath)).resolves.toEqual(Buffer.from([4, 5, 6]));
+  });
+
+  it("does not rewrite unchanged embedded artwork cache files", async () => {
+    const trackPath = path.join(await mkdtemp(path.join(os.tmpdir(), "embedded-art-stable-")), "song.mp3");
+    const artworkCacheDir = await mkdtemp(path.join(os.tmpdir(), "musicplayer-artwork-stable-"));
+    const artworkPath = await writeEmbeddedArtwork(
+      trackPath,
+      {
+        format: "image/jpeg",
+        data: new Uint8Array([7, 8, 9])
+      },
+      artworkCacheDir
+    );
+    const oldTimestamp = new Date("2024-01-01T00:00:00.000Z");
+    await utimes(artworkPath, oldTimestamp, oldTimestamp);
+
+    await writeEmbeddedArtwork(
+      trackPath,
+      {
+        format: "image/jpeg",
+        data: new Uint8Array([7, 8, 9])
+      },
+      artworkCacheDir
+    );
+
+    expect((await stat(artworkPath)).mtime.getTime()).toBe(oldTimestamp.getTime());
   });
 });

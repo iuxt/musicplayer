@@ -37,6 +37,9 @@ beforeEach(() => {
   window.musicApi = {
     chooseMusicFolder: vi.fn(),
     rescanLibrary: vi.fn(),
+    readLibraryCache: vi.fn(),
+    writeLibraryCache: vi.fn(),
+    clearLibraryCache: vi.fn(),
     getPlayableUrl: vi.fn(async (filePath: string) => `file://${filePath}`),
     getArtworkUrl: vi.fn(),
     getLyrics: vi.fn(),

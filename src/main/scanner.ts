@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { ScanProgress, ScanResult, ScanWarning, SupportedAudioExtension, Track } from "../shared/types.js";
@@ -208,8 +208,21 @@ export async function writeEmbeddedArtwork(
   await mkdir(cacheDir, { recursive: true });
   const extension = artworkExtensionForFormat(picture.format);
   const artworkPath = path.join(cacheDir, `${stableId(trackPath)}.${extension}`);
-  await writeFile(artworkPath, Buffer.from(picture.data));
+  const artworkBuffer = Buffer.from(picture.data);
+  if (await hasSameFileContents(artworkPath, artworkBuffer)) {
+    return artworkPath;
+  }
+
+  await writeFile(artworkPath, artworkBuffer);
   return artworkPath;
+}
+
+async function hasSameFileContents(filePath: string, expectedContents: Buffer) {
+  try {
+    return (await readFile(filePath)).equals(expectedContents);
+  } catch {
+    return false;
+  }
 }
 
 function artworkExtensionForFormat(format: string): "jpg" | "png" | "webp" {

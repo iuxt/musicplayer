@@ -36,6 +36,22 @@ describe("Electron preload packaging", () => {
     expect(mainSource).toContain("trashFileWithFallback");
   });
 
+  it("exposes library cache APIs through preload and main IPC", async () => {
+    const preloadSource = await readFile(path.join(process.cwd(), "electron/preload.cts"), "utf8");
+    const mainSource = await readFile(path.join(process.cwd(), "electron/main.ts"), "utf8");
+
+    expect(preloadSource).toContain("readLibraryCache");
+    expect(preloadSource).toContain("writeLibraryCache");
+    expect(preloadSource).toContain("clearLibraryCache");
+    expect(preloadSource).toContain("library:read-cache");
+    expect(preloadSource).toContain("library:write-cache");
+    expect(preloadSource).toContain("library:clear-cache");
+    expect(mainSource).toContain("library:read-cache");
+    expect(mainSource).toContain("library:write-cache");
+    expect(mainSource).toContain("library:clear-cache");
+    expect(mainSource).toContain("getLibraryCachePath()");
+  });
+
   it("exposes system media shortcut APIs", async () => {
     const preloadSource = await readFile(path.join(process.cwd(), "electron/preload.cts"), "utf8");
     const mainSource = await readFile(path.join(process.cwd(), "electron/main.ts"), "utf8");

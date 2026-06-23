@@ -143,6 +143,36 @@ describe("LibraryList", () => {
     expect(getArtworkUrl).toHaveBeenCalledWith("/music/album-cover.jpg");
   });
 
+  it("reuses artwork URL lookups for visible tracks with the same artwork path", async () => {
+    const tracks = [
+      makeTrack(1, { artworkPath: "/music/shared-cover.jpg" }),
+      makeTrack(2, { artworkPath: "/music/shared-cover.jpg" })
+    ];
+    const getArtworkUrl = vi.fn(async (filePath: string | null) => (filePath ? `file://${filePath}` : null));
+    Object.defineProperty(window, "musicApi", {
+      configurable: true,
+      value: { getArtworkUrl }
+    });
+
+    render(
+      <LibraryList
+        category="songs"
+        tracks={tracks}
+        currentTrack={null}
+        search=""
+        selectedFolderPath={null}
+        onSearchChange={() => undefined}
+        onSelectTrack={() => undefined}
+        onOpenFolder={() => undefined}
+        onBackToFolders={() => undefined}
+        onTrackContextMenu={() => undefined}
+      />
+    );
+
+    expect(await screen.findAllByRole("img", { name: "Album 封面" })).toHaveLength(2);
+    expect(getArtworkUrl).toHaveBeenCalledTimes(1);
+  });
+
   it("shows an artist icon thumbnail before artist group titles", () => {
     render(
       <LibraryList

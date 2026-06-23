@@ -26,6 +26,7 @@ const headings: Record<LibraryCategory, string> = {
   artists: "歌手",
   folders: "文件夹"
 };
+const artworkUrlCache = new Map<string, Promise<string | null>>();
 
 export const LibraryList = memo(function LibraryList({
   category,
@@ -251,8 +252,7 @@ function useArtworkUrl(artworkPath: string | null) {
       };
     }
 
-    void window.musicApi
-      .getArtworkUrl(artworkPath)
+    void getCachedArtworkUrl(artworkPath)
       .then((url) => {
         if (!cancelled) {
           setArtworkUrl(url);
@@ -270,6 +270,17 @@ function useArtworkUrl(artworkPath: string | null) {
   }, [artworkPath]);
 
   return artworkUrl;
+}
+
+function getCachedArtworkUrl(artworkPath: string) {
+  const cached = artworkUrlCache.get(artworkPath);
+  if (cached) {
+    return cached;
+  }
+
+  const pending = window.musicApi.getArtworkUrl(artworkPath).catch(() => null);
+  artworkUrlCache.set(artworkPath, pending);
+  return pending;
 }
 
 function buildGroups(tracks: Track[], category: Exclude<LibraryCategory, "songs" | "folders">) {

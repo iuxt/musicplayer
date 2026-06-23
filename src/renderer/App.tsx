@@ -17,7 +17,6 @@ import type { LibraryCategory } from "./libraryCategories";
 import { buildDesktopLyricsPayload } from "./lyrics";
 
 const LAST_FOLDER_STORAGE_KEY = "musicplayer:last-folder";
-const LIBRARY_CACHE_STORAGE_KEY = "musicplayer:library-cache";
 const PLAYBACK_STATE_STORAGE_KEY = "musicplayer:playback-state";
 const PLAYBACK_PROGRESS_SAVE_INTERVAL_MS = 5000;
 const DEFAULT_PLAYLIST_LABEL = "音乐库";
@@ -67,6 +66,7 @@ export function App() {
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
   const [metadataError, setMetadataError] = useState<string | null>(null);
   const [pendingMediaAction, setPendingMediaAction] = useState(false);
+  const [hasLoadedSystemFonts, setHasLoadedSystemFonts] = useState(false);
   const lastPlaybackSaveRef = useRef<{
     trackId: string | null;
     queueKey: string;
@@ -156,6 +156,14 @@ export function App() {
     });
   }, []);
 
+  const persistLibraryCache = useCallback(async (result: ScanResult) => {
+    try {
+      await window.musicApi.writeLibraryCache(result);
+    } catch {
+      setAppError("无法保存音乐库缓存。");
+    }
+  }, []);
+
   const changeFullscreenLyricsFontFamily = useCallback(
     (fontFamily: string) => {
       commitAppSettings((currentSettings) => ({ ...currentSettings, fullscreenLyricsFontFamily: fontFamily }));
@@ -241,24 +249,30 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    if (activeView !== "settings" || hasLoadedSystemFonts) {
+      return;
+    }
+
     let cancelled = false;
     void window.musicApi
       .listSystemFonts()
       .then((fontFamilies) => {
         if (!cancelled) {
           setAvailableFontFamilies(fontFamilies.length > 0 ? fontFamilies : [""]);
+          setHasLoadedSystemFonts(true);
         }
       })
       .catch(() => {
         if (!cancelled) {
           setAvailableFontFamilies(["", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", "LXGW WenKai", "Arial", "Helvetica"]);
+          setHasLoadedSystemFonts(true);
         }
       });
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [activeView, hasLoadedSystemFonts]);
 
   useEffect(() => {
     if (!pendingPlaybackRestore) {
@@ -337,13 +351,13 @@ export function App() {
         return;
       }
       loadLibraryResult(result);
-      saveLibraryCache(result);
+      await persistLibraryCache(result);
     } catch (error) {
       setAppError(error instanceof Error ? error.message : "无法扫描文件夹。");
     } finally {
       setIsScanning(false);
     }
-  }, [loadLibraryResult]);
+  }, [loadLibraryResult, persistLibraryCache]);
 
   const rescan = useCallback(async () => {
     if (!folderPath) {
@@ -357,13 +371,13 @@ export function App() {
     try {
       const result = await window.musicApi.rescanLibrary(folderPath);
       loadLibraryResult(result);
-      saveLibraryCache(result);
+      await persistLibraryCache(result);
     } catch (error) {
       setAppError(error instanceof Error ? error.message : "无法重新扫描文件夹。");
     } finally {
       setIsScanning(false);
     }
-  }, [folderPath, loadLibraryResult]);
+  }, [folderPath, loadLibraryResult, persistLibraryCache]);
 
   useEffect(() => {
     return window.musicApi.onScanProgress(setScanProgress);
@@ -435,41 +449,50 @@ export function App() {
     }
 
     let cancelled = false;
-    const cachedResult = readLibraryCache(rememberedFolderPath);
-    if (cachedResult) {
-      loadLibraryResult(cachedResult);
-      return;
-    }
+    void (async () => {
+      let cachedResult: unknown | null = null;
+      try {
+        cachedResult = await window.musicApi.readLibraryCache();
+      } catch {
+        cachedResult = null;
+      }
 
-    setFolderPath(rememberedFolderPath);
-    setIsScanning(true);
-    setAppError(null);
-    setScanProgress(null);
+      if (cancelled) {
+        return;
+      }
 
-    void window.musicApi
-      .rescanLibrary(rememberedFolderPath)
-      .then((result) => {
+      if (isUsableLibraryCache(cachedResult, rememberedFolderPath)) {
+        loadLibraryResult(cachedResult);
+        return;
+      }
+
+      setFolderPath(rememberedFolderPath);
+      setIsScanning(true);
+      setAppError(null);
+      setScanProgress(null);
+
+      try {
+        const result = await window.musicApi.rescanLibrary(rememberedFolderPath);
         if (cancelled) {
           return;
         }
         loadLibraryResult(result);
-        saveLibraryCache(result);
-      })
-      .catch((error) => {
+        await persistLibraryCache(result);
+      } catch (error) {
         if (!cancelled) {
           setAppError(error instanceof Error ? error.message : "无法重新打开上次的音乐文件夹。");
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) {
           setIsScanning(false);
         }
-      });
+      }
+    })();
 
     return () => {
       cancelled = true;
     };
-  }, [loadLibraryResult]);
+  }, [loadLibraryResult, persistLibraryCache]);
 
   useEffect(() => {
     let cancelled = false;
@@ -483,11 +506,18 @@ export function App() {
       return;
     }
 
-    void window.musicApi.getArtworkUrl(track.artworkPath).then((url) => {
-      if (!cancelled) {
-        setArtworkUrl(url);
-      }
-    });
+    void window.musicApi
+      .getArtworkUrl(track.artworkPath)
+      .then((url) => {
+        if (!cancelled) {
+          setArtworkUrl(url);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setArtworkUrl(null);
+        }
+      });
 
     void window.musicApi
       .getLyrics(track.lyricsPath)
@@ -534,7 +564,9 @@ export function App() {
 
   useEffect(() => {
     if (!appSettings.desktopLyricsEnabled) {
-      void window.musicApi.closeDesktopLyrics();
+      void window.musicApi.closeDesktopLyrics().catch(() => {
+        setAppError("无法关闭桌面歌词。");
+      });
       return;
     }
 
@@ -571,12 +603,14 @@ export function App() {
   const clearLibraryCache = useCallback(() => {
     setCacheStatus(null);
     setCacheError(null);
-    try {
-      localStorage.removeItem(LIBRARY_CACHE_STORAGE_KEY);
-      setCacheStatus("音乐库缓存已清除。");
-    } catch {
-      setCacheError("无法清除音乐库缓存。");
-    }
+    void window.musicApi
+      .clearLibraryCache()
+      .then(() => {
+        setCacheStatus("音乐库缓存已清除。");
+      })
+      .catch(() => {
+        setCacheError("无法清除音乐库缓存。");
+      });
   }, []);
 
   const openFolder = useCallback((nextFolderPath: string) => {
@@ -631,12 +665,12 @@ export function App() {
       setTracks((currentTracks) => {
         const nextTracks = updater(currentTracks);
         if (folderPath) {
-          saveLibraryCache({ folderPath, tracks: nextTracks, warnings });
+          void persistLibraryCache({ folderPath, tracks: nextTracks, warnings });
         }
         return nextTracks;
       });
     },
-    [folderPath, warnings]
+    [folderPath, persistLibraryCache, warnings]
   );
 
   const replaceTrack = useCallback(
@@ -923,26 +957,8 @@ export function App() {
   );
 }
 
-function saveLibraryCache(result: ScanResult) {
-  localStorage.setItem(LIBRARY_CACHE_STORAGE_KEY, JSON.stringify(result));
-}
-
-function readLibraryCache(folderPath: string): ScanResult | null {
-  const cachedValue = localStorage.getItem(LIBRARY_CACHE_STORAGE_KEY);
-  if (!cachedValue) {
-    return null;
-  }
-
-  try {
-    const parsed = JSON.parse(cachedValue) as unknown;
-    if (!isScanResultForFolder(parsed, folderPath) || hasLegacyTemporaryArtworkPaths(parsed)) {
-      return null;
-    }
-
-    return parsed;
-  } catch {
-    return null;
-  }
+function isUsableLibraryCache(value: unknown, folderPath: string): value is ScanResult {
+  return isScanResultForFolder(value, folderPath) && !hasLegacyTemporaryArtworkPaths(value);
 }
 
 function hasLegacyTemporaryArtworkPaths(result: ScanResult) {

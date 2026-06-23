@@ -15,7 +15,7 @@ const INITIAL_PAYLOAD: DesktopLyricsPayload = {
 export function DesktopLyricsWindow() {
   const [payload, setPayload] = useState<DesktopLyricsPayload>(INITIAL_PAYLOAD);
   const resizeWindow = useCallback((width: number, height: number) => {
-    void window.musicApi.resizeDesktopLyrics(width, height);
+    void window.musicApi.resizeDesktopLyrics(width, height).catch(() => undefined);
   }, []);
 
   useEffect(() => {
