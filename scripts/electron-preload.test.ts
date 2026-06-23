@@ -33,6 +33,7 @@ describe("Electron preload packaging", () => {
     expect(mainSource).toContain("media:trash-track-files");
     expect(mainSource).toContain("showItemInFolder");
     expect(mainSource).toContain("trashItem");
+    expect(mainSource).toContain("trashFileWithFallback");
   });
 
   it("exposes system media shortcut APIs", async () => {

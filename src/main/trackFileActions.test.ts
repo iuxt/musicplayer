@@ -1,9 +1,15 @@
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import type { Track } from "../shared/types.js";
-import { buildTrackTrashCandidates, trashTrackFiles, trashTrackLyrics } from "./trackFileActions.js";
+import {
+  buildTrackTrashCandidates,
+  moveFileToUserTrash,
+  trashFileWithFallback,
+  trashTrackFiles,
+  trashTrackLyrics
+} from "./trackFileActions.js";
 
 describe("track file actions", () => {
   it("trashes current lyrics and treats a missing lyrics path as success", async () => {
@@ -64,6 +70,34 @@ describe("track file actions", () => {
       failed: [{ filePath: audioPath, kind: "audio", error: "trash rejected" }],
       error: "无法将音乐文件移到废纸篓。"
     });
+  });
+
+  it("moves files into a user trash directory as a fallback", async () => {
+    const root = await mkdirTemp("manual-trash-");
+    const trashRoot = path.join(root, ".Trash");
+    const audioPath = path.join(root, "song.flac");
+    await writeFile(audioPath, "audio");
+
+    await moveFileToUserTrash(audioPath, trashRoot);
+
+    await expect(access(audioPath)).rejects.toBeTruthy();
+    await expect(readdir(trashRoot)).resolves.toEqual(["song.flac"]);
+  });
+
+  it("uses the fallback trash mover when the primary trash API rejects", async () => {
+    const root = await mkdirTemp("trash-fallback-");
+    const trashRoot = path.join(root, ".Trash");
+    const audioPath = path.join(root, "song.flac");
+    const primaryTrash = vi.fn(async () => {
+      throw new Error("未能打开文件");
+    });
+    await writeFile(audioPath, "audio");
+
+    await trashFileWithFallback(audioPath, primaryTrash, (filePath) => moveFileToUserTrash(filePath, trashRoot));
+
+    expect(primaryTrash).toHaveBeenCalledWith(audioPath);
+    await expect(access(audioPath)).rejects.toBeTruthy();
+    await expect(readdir(trashRoot)).resolves.toEqual(["song.flac"]);
   });
 });
 

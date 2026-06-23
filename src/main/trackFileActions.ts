@@ -1,10 +1,43 @@
-import { access, readdir } from "node:fs/promises";
+import { constants } from "node:fs";
+import { access, copyFile, mkdir, readdir, rename, unlink } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import type { MediaActionResult, Track, TrashFileEntry, TrashTrackFilesResult } from "../shared/types.js";
 
 const artworkExtensions = new Set(["jpg", "jpeg", "png", "webp"]);
 
 export type TrashFile = (filePath: string) => Promise<void>;
+
+export async function trashFileWithFallback(
+  filePath: string,
+  primaryTrash: TrashFile,
+  fallbackTrash: TrashFile = moveFileToUserTrash
+): Promise<void> {
+  try {
+    await primaryTrash(filePath);
+  } catch (primaryError) {
+    try {
+      await fallbackTrash(filePath);
+    } catch (fallbackError) {
+      throw combineTrashErrors(primaryError, fallbackError);
+    }
+  }
+}
+
+export async function moveFileToUserTrash(filePath: string, trashRoot = path.join(os.homedir(), ".Trash")): Promise<void> {
+  await mkdir(trashRoot, { recursive: true });
+  const destination = await getAvailableTrashPath(trashRoot, path.basename(filePath));
+
+  try {
+    await rename(filePath, destination);
+  } catch (error) {
+    if (getErrorCode(error) !== "EXDEV") {
+      throw error;
+    }
+
+    await copyAcrossDevicesAndUnlink(filePath, destination);
+  }
+}
 
 export async function trashTrackLyrics(track: Track, trashFile: TrashFile): Promise<MediaActionResult> {
   if (!track.lyricsPath) {
@@ -116,4 +149,39 @@ function compareTrashCandidates(first: TrashFileEntry, second: TrashFileEntry) {
 
 function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
+}
+
+async function getAvailableTrashPath(trashRoot: string, fileName: string) {
+  const extension = path.extname(fileName);
+  const basename = path.basename(fileName, extension);
+
+  for (let index = 0; index < 1000; index += 1) {
+    const candidateName = index === 0 ? fileName : `${basename} ${index}${extension}`;
+    const candidatePath = path.join(trashRoot, candidateName);
+    if (!(await exists(candidatePath))) {
+      return candidatePath;
+    }
+  }
+
+  throw new Error("无法在废纸篓中生成可用文件名。");
+}
+
+async function copyAcrossDevicesAndUnlink(source: string, destination: string) {
+  try {
+    await copyFile(source, destination, constants.COPYFILE_EXCL);
+    await unlink(source);
+  } catch (error) {
+    await unlink(destination).catch(() => undefined);
+    throw error;
+  }
+}
+
+function combineTrashErrors(primaryError: unknown, fallbackError: unknown) {
+  const primaryMessage = errorMessage(primaryError, "系统废纸篓接口失败。");
+  const fallbackMessage = errorMessage(fallbackError, "移动到用户废纸篓失败。");
+  return new Error(`${primaryMessage}；备用删除也失败：${fallbackMessage}`);
+}
+
+function getErrorCode(error: unknown) {
+  return typeof error === "object" && error !== null && "code" in error ? String(error.code) : null;
 }

@@ -17,7 +17,7 @@ import { readLyricsFile, toExistingOptionalFileUrl, toMediaFileUrl } from "../sr
 import { writeTrackMetadata } from "../src/main/metadataWriter.js";
 import { scanMusicFolder } from "../src/main/scanner.js";
 import { listSystemFonts } from "../src/main/systemFonts.js";
-import { trashTrackFiles, trashTrackLyrics } from "../src/main/trackFileActions.js";
+import { trashFileWithFallback, trashTrackFiles, trashTrackLyrics } from "../src/main/trackFileActions.js";
 import type { DesktopLyricsPayload, Track, TrackMetadataUpdate } from "../src/shared/types.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -46,6 +46,10 @@ const systemMediaShortcuts: Array<{ accelerator: string; command: MediaKeyComman
   { accelerator: "MediaNextTrack", command: "next" },
   { accelerator: "MediaPreviousTrack", command: "previous" }
 ];
+
+function trashFile(filePath: string) {
+  return trashFileWithFallback(filePath, (targetPath) => shell.trashItem(targetPath));
+}
 
 function sendMenuCommand(command: MenuCommand) {
   const targetWindow = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
@@ -306,11 +310,11 @@ function registerIpc() {
   });
 
   ipcMain.handle("media:trash-track-lyrics", (_event, track: Track) => {
-    return trashTrackLyrics(track, (filePath) => shell.trashItem(filePath));
+    return trashTrackLyrics(track, trashFile);
   });
 
   ipcMain.handle("media:trash-track-files", (_event, track: Track) => {
-    return trashTrackFiles(track, (filePath) => shell.trashItem(filePath));
+    return trashTrackFiles(track, trashFile);
   });
 
   ipcMain.handle("fonts:list-system", () => {
