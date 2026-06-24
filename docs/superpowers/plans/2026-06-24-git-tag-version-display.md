@@ -25,7 +25,7 @@
 - Modify: `vite.config.ts`
 - Test: `scripts/vite-config.test.ts`
 
-- [ ] **Step 1: Write failing Vite config tests**
+- [x] **Step 1: Write failing Vite config tests**
 
 Add tests to `scripts/vite-config.test.ts`:
 
@@ -73,7 +73,7 @@ describe("vite config", () => {
 });
 ```
 
-- [ ] **Step 2: Run the failing Vite config tests**
+- [x] **Step 2: Run the failing Vite config tests**
 
 Run:
 
@@ -83,7 +83,7 @@ npm test -- scripts/vite-config.test.ts
 
 Expected: FAIL because `resolveAppVersion` is not exported and `config.define` does not include `__APP_VERSION__`.
 
-- [ ] **Step 3: Implement version resolution and injection**
+- [x] **Step 3: Implement version resolution and injection**
 
 Update `vite.config.ts` to:
 
@@ -128,7 +128,7 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Step 4: Run Vite config tests**
+- [x] **Step 4: Run Vite config tests**
 
 Run:
 
@@ -146,7 +146,7 @@ Expected: PASS.
 - Modify: `src/renderer/components/SettingsPage.tsx`
 - Test: `src/renderer/components/SettingsPage.test.tsx`
 
-- [ ] **Step 1: Write the failing Settings page test**
+- [x] **Step 1: Write the failing Settings page test**
 
 In `src/renderer/components/SettingsPage.test.tsx`, add this test inside `describe("SettingsPage", () => { ... })`:
 
@@ -166,7 +166,7 @@ Also update `makeProps()` to include:
 appVersion: "unknown",
 ```
 
-- [ ] **Step 2: Run the failing Settings page test**
+- [x] **Step 2: Run the failing Settings page test**
 
 Run:
 
@@ -176,7 +176,7 @@ npm test -- src/renderer/components/SettingsPage.test.tsx
 
 Expected: FAIL because `SettingsPageProps` does not include `appVersion` and no about section is rendered.
 
-- [ ] **Step 3: Declare the build-time version constant**
+- [x] **Step 3: Declare the build-time version constant**
 
 Add this global declaration inside `declare global` in `src/vite-env.d.ts`:
 
@@ -184,7 +184,7 @@ Add this global declaration inside `declare global` in `src/vite-env.d.ts`:
 const __APP_VERSION__: string;
 ```
 
-- [ ] **Step 4: Pass the injected version to SettingsPage**
+- [x] **Step 4: Pass the injected version to SettingsPage**
 
 In `src/renderer/App.tsx`, update the SettingsPage usage:
 
@@ -220,7 +220,7 @@ In `src/renderer/App.tsx`, update the SettingsPage usage:
 />
 ```
 
-- [ ] **Step 5: Render the about section**
+- [x] **Step 5: Render the about section**
 
 In `src/renderer/components/SettingsPage.tsx`, add the prop:
 
@@ -248,7 +248,7 @@ Render this section after the lyrics section and before the closing Settings pag
 </section>
 ```
 
-- [ ] **Step 6: Run the Settings page test**
+- [x] **Step 6: Run the Settings page test**
 
 Run:
 
@@ -268,7 +268,7 @@ Expected: PASS.
 - Verify: `src/renderer/components/SettingsPage.test.tsx`
 - Verify: `scripts/vite-config.test.ts`
 
-- [ ] **Step 1: Run focused tests**
+- [x] **Step 1: Run focused tests**
 
 Run:
 
@@ -278,7 +278,7 @@ npm test -- scripts/vite-config.test.ts src/renderer/components/SettingsPage.tes
 
 Expected: PASS.
 
-- [ ] **Step 2: Run typecheck**
+- [x] **Step 2: Run typecheck**
 
 Run:
 
@@ -288,7 +288,7 @@ npm run typecheck
 
 Expected: PASS.
 
-- [ ] **Step 3: Run the full test suite**
+- [x] **Step 3: Run the full test suite**
 
 Run:
 
