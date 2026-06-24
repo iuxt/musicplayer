@@ -19,6 +19,8 @@ export type SystemMediaShortcutsPermissionResult =
   | { ok: false; reason: "accessibility-permission-denied" };
 
 declare global {
+  const __APP_VERSION__: string;
+
   interface Window {
     musicApi: {
       chooseMusicFolder: () => Promise<ScanResult | null>;

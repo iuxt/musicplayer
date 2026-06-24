@@ -341,6 +341,17 @@ button:disabled {
   gap: 8px;
 }
 
+.app-version-row {
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 14px;
+}
+
+.app-version-row span {
+  color: #73737a;
+  font-size: 13px;
+}
+
 .setting-row strong,
 .lyrics-size-control span {
   color: #1d1d1f;

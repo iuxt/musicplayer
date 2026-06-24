@@ -17,6 +17,7 @@ interface SettingsPageProps {
   desktopLyricsEnabled: boolean;
   desktopLyricsFontFamily: string;
   desktopLyricsFontSize: number;
+  appVersion: string;
   cacheStatus: string | null;
   cacheError: string | null;
   onChooseFolder: () => void;
@@ -42,6 +43,7 @@ export function SettingsPage({
   desktopLyricsEnabled,
   desktopLyricsFontFamily,
   desktopLyricsFontSize,
+  appVersion,
   cacheStatus,
   cacheError,
   onChooseFolder,
@@ -205,6 +207,16 @@ export function SettingsPage({
             <p>桌面歌词预览行</p>
             <span>下一句歌词预览</span>
           </div>
+        </div>
+      </section>
+
+      <section className="settings-section app-info-section" aria-labelledby="app-info-heading">
+        <div className="settings-section-heading">
+          <h3 id="app-info-heading">关于</h3>
+        </div>
+        <div className="setting-row app-version-row">
+          <strong>版本</strong>
+          <span>{appVersion}</span>
         </div>
       </section>
     </section>

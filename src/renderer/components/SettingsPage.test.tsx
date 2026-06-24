@@ -48,6 +48,14 @@ describe("SettingsPage", () => {
     expect(screen.getByRole("alert").textContent).toBe("无法清除音乐库缓存。");
   });
 
+  it("shows the app version in the about section", () => {
+    render(<SettingsPage {...makeProps({ appVersion: "v1.6.0" })} />);
+
+    expect(screen.getByRole("heading", { name: "关于" })).toBeTruthy();
+    expect(screen.getByText("版本")).toBeTruthy();
+    expect(screen.getByText("v1.6.0")).toBeTruthy();
+  });
+
   it("changes fullscreen lyrics font settings", () => {
     const props = makeProps({ fullscreenLyricsFontFamily: "", fullscreenLyricsFontSize: 36 });
 
@@ -112,6 +120,7 @@ function makeProps(overrides: Partial<Parameters<typeof SettingsPage>[0]> = {}):
     desktopLyricsEnabled: false,
     desktopLyricsFontFamily: "",
     desktopLyricsFontSize: 28,
+    appVersion: "unknown",
     cacheStatus: null,
     cacheError: null,
     onChooseFolder: vi.fn(),

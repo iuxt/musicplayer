@@ -844,6 +844,7 @@ export function App() {
             desktopLyricsEnabled={appSettings.desktopLyricsEnabled}
             desktopLyricsFontFamily={appSettings.desktopLyricsFontFamily}
             desktopLyricsFontSize={appSettings.desktopLyricsFontSize}
+            appVersion={__APP_VERSION__}
             cacheStatus={cacheStatus}
             cacheError={cacheError}
             onChooseFolder={chooseFolder}
