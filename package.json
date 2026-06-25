@@ -59,7 +59,7 @@
     "extraMetadata": {
       "main": "dist-electron/electron/main.js"
     },
-    "artifactName": "musicplayer-${version}-${os}-${arch}.${ext}",
+    "artifactName": "musicplayer-${os}-${arch}.${ext}",
     "mac": {
       "category": "public.app-category.music",
       "icon": "build/app-icon.icns",

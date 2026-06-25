@@ -20,15 +20,32 @@ type ExecFile = (
 interface ListSystemFontsOptions {
   platform?: NodeJS.Platform;
   execFile?: ExecFile;
+  cache?: boolean;
 }
 
-export async function listSystemFonts({
+let cachedSystemFontsPromise: Promise<string[]> | null = null;
+
+export function clearSystemFontsCache() {
+  cachedSystemFontsPromise = null;
+}
+
+export function listSystemFonts(options: ListSystemFontsOptions = {}) {
+  const shouldCache = options.cache ?? (!options.platform && !options.execFile);
+  if (!shouldCache) {
+    return enumerateSystemFonts(options);
+  }
+
+  cachedSystemFontsPromise ??= enumerateSystemFonts(options);
+  return cachedSystemFontsPromise;
+}
+
+async function enumerateSystemFonts({
   platform = process.platform,
   execFile = defaultExecFile
 }: ListSystemFontsOptions = {}) {
   try {
     if (platform === "darwin") {
-      return withFallback(parseMacFontOutput(await execFileText(execFile, "system_profiler", ["SPFontsDataType", "-json"])));
+      return withFallback(await listMacFonts(execFile));
     }
     if (platform === "linux") {
       return withFallback(parseFcListOutput(await execFileText(execFile, "fc-list", [":", "family"])));
@@ -50,10 +67,51 @@ export async function listSystemFonts({
   }
 }
 
+async function listMacFonts(execFile: ExecFile) {
+  try {
+    const fontNames = parseMacAtsutilFontOutput(await execFileText(execFile, "atsutil", ["fonts", "-list"]));
+    if (fontNames.length > 0) {
+      return fontNames;
+    }
+  } catch {
+    // Fall back to system_profiler below; atsutil is much faster but not required.
+  }
+
+  return parseMacFontOutput(await execFileText(execFile, "system_profiler", ["SPFontsDataType", "-json"]));
+}
+
 export function parseMacFontOutput(output: string) {
   const parsed = JSON.parse(output) as unknown;
   const names: string[] = [];
   collectFontFamilies(parsed, names);
+  return normalizeFontNames(names);
+}
+
+export function parseMacAtsutilFontOutput(output: string) {
+  const names: string[] = [];
+  let isReadingFamilies = false;
+
+  for (const line of output.split(/\r?\n/)) {
+    const trimmedLine = line.trim();
+    if (!trimmedLine) {
+      continue;
+    }
+
+    if (/^\S.*Families:$/.test(line)) {
+      isReadingFamilies = true;
+      continue;
+    }
+
+    if (/^\S.*:$/.test(line)) {
+      isReadingFamilies = false;
+      continue;
+    }
+
+    if (isReadingFamilies) {
+      names.push(trimmedLine);
+    }
+  }
+
   return normalizeFontNames(names);
 }
 
