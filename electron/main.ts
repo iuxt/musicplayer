@@ -14,6 +14,11 @@ import {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readLyricsFile, toExistingOptionalFileUrl, toMediaFileUrl } from "../src/main/fileUrls.js";
+import {
+  clampDesktopLyricsPosition,
+  readDesktopLyricsPosition,
+  writeDesktopLyricsPosition
+} from "../src/main/desktopLyricsPosition.js";
 import { clearLibraryCacheFile, readLibraryCacheFile, writeLibraryCacheFile } from "../src/main/libraryCache.js";
 import { writeTrackMetadata } from "../src/main/metadataWriter.js";
 import { scanMusicFolder } from "../src/main/scanner.js";
@@ -32,6 +37,9 @@ let isQuitting = false;
 let closeWindowStopsPlayback = false;
 const maxDesktopLyricsWidth = 960;
 const maxDesktopLyricsHeight = 240;
+const defaultDesktopLyricsWidth = 420;
+const defaultDesktopLyricsHeight = 92;
+let desktopLyricsPositionPersistTimer: ReturnType<typeof setTimeout> | null = null;
 
 app.setName(appDisplayName);
 
@@ -146,10 +154,13 @@ async function showDesktopLyricsWindow() {
     return;
   }
 
+  const initialPosition = await getInitialDesktopLyricsPosition();
+
   desktopLyricsWindow = new BrowserWindow({
     title: "桌面歌词",
-    width: 420,
-    height: 92,
+    width: defaultDesktopLyricsWidth,
+    height: defaultDesktopLyricsHeight,
+    ...(initialPosition ? { x: initialPosition.x, y: initialPosition.y } : {}),
     resizable: false,
     frame: false,
     transparent: true,
@@ -166,6 +177,14 @@ async function showDesktopLyricsWindow() {
     }
   });
   desktopLyricsWindow.excludedFromShownWindowsMenu = true;
+
+  desktopLyricsWindow.on("move", () => {
+    scheduleDesktopLyricsPositionPersist();
+  });
+
+  desktopLyricsWindow.on("close", () => {
+    persistDesktopLyricsPosition();
+  });
 
   desktopLyricsWindow.on("closed", () => {
     desktopLyricsWindow = null;
@@ -207,6 +226,43 @@ function resizeDesktopLyricsWindow(width: number, height: number) {
     width: targetWidth,
     height: targetHeight
   });
+  scheduleDesktopLyricsPositionPersist();
+}
+
+async function getInitialDesktopLyricsPosition() {
+  const savedPosition = await readDesktopLyricsPosition(getDesktopLyricsPositionPath());
+  if (!savedPosition) {
+    return null;
+  }
+
+  const defaultSize = { width: defaultDesktopLyricsWidth, height: defaultDesktopLyricsHeight };
+  const workArea = screen.getDisplayMatching({ ...savedPosition, ...defaultSize }).workArea;
+  return clampDesktopLyricsPosition(savedPosition, defaultSize, workArea);
+}
+
+function scheduleDesktopLyricsPositionPersist() {
+  if (desktopLyricsPositionPersistTimer) {
+    clearTimeout(desktopLyricsPositionPersistTimer);
+  }
+
+  desktopLyricsPositionPersistTimer = setTimeout(() => {
+    desktopLyricsPositionPersistTimer = null;
+    persistDesktopLyricsPosition();
+  }, 150);
+}
+
+function persistDesktopLyricsPosition() {
+  if (desktopLyricsPositionPersistTimer) {
+    clearTimeout(desktopLyricsPositionPersistTimer);
+    desktopLyricsPositionPersistTimer = null;
+  }
+
+  if (!desktopLyricsWindow || desktopLyricsWindow.isDestroyed()) {
+    return;
+  }
+
+  const { x, y } = desktopLyricsWindow.getBounds();
+  void writeDesktopLyricsPosition(getDesktopLyricsPositionPath(), { x, y }).catch(() => undefined);
 }
 
 function closeDesktopLyricsWindow() {
@@ -375,6 +431,10 @@ function getArtworkCacheDir() {
 
 function getLibraryCachePath() {
   return path.join(app.getPath("userData"), "library-cache.json");
+}
+
+function getDesktopLyricsPositionPath() {
+  return path.join(app.getPath("userData"), "desktop-lyrics-position.json");
 }
 
 async function createWindow() {

@@ -53,6 +53,16 @@ describe("Electron desktop lyrics window", () => {
     expect(mainSource).toContain('mainWindow.webContents.send("desktop-lyrics:closed")');
   });
 
+  it("persists and restores the desktop lyrics window position", async () => {
+    const mainSource = await readFile(path.join(process.cwd(), "electron/main.ts"), "utf8");
+
+    expect(mainSource).toContain("getDesktopLyricsPositionPath");
+    expect(mainSource).toContain("readDesktopLyricsPosition");
+    expect(mainSource).toContain("writeDesktopLyricsPosition");
+    expect(mainSource).toContain('desktopLyricsWindow.on("move"');
+    expect(mainSource).toContain('desktopLyricsWindow.on("close"');
+  });
+
   it("hides the main window on macOS close unless the stop-playback setting is enabled", async () => {
     const mainSource = await readFile(path.join(process.cwd(), "electron/main.ts"), "utf8");
 
