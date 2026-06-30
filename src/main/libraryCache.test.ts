@@ -40,6 +40,7 @@ function makeScanResult(folderPath: string): ScanResult {
   return {
     folderPath,
     warnings: [],
+    playlists: [],
     tracks: [
       {
         id: "track-1",

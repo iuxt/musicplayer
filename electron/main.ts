@@ -21,10 +21,17 @@ import {
 } from "../src/main/desktopLyricsPosition.js";
 import { clearLibraryCacheFile, readLibraryCacheFile, writeLibraryCacheFile } from "../src/main/libraryCache.js";
 import { writeTrackMetadata } from "../src/main/metadataWriter.js";
+import {
+  addTrackToM3uPlaylistFile,
+  createM3uPlaylistFile,
+  deleteM3uPlaylistFile,
+  removeTrackFromM3uPlaylistFile,
+  renameM3uPlaylistFile
+} from "../src/main/playlists.js";
 import { scanMusicFolder } from "../src/main/scanner.js";
 import { listSystemFonts } from "../src/main/systemFonts.js";
 import { trashFileWithFallback, trashTrackFiles, trashTrackLyrics } from "../src/main/trackFileActions.js";
-import type { DesktopLyricsPayload, ScanResult, Track, TrackMetadataUpdate } from "../src/shared/types.js";
+import type { DesktopLyricsPayload, LibraryPlaylist, ScanResult, Track, TrackMetadataUpdate } from "../src/shared/types.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -58,6 +65,23 @@ const systemMediaShortcuts: Array<{ accelerator: string; command: MediaKeyComman
 
 function trashFile(filePath: string) {
   return trashFileWithFallback(filePath, (targetPath) => shell.trashItem(targetPath));
+}
+
+async function toPlaylistMutationResult(action: () => Promise<LibraryPlaylist>) {
+  try {
+    return { ok: true as const, playlist: await action() };
+  } catch (error) {
+    return { ok: false as const, error: error instanceof Error ? error.message : "无法更新播放列表。" };
+  }
+}
+
+async function toMediaActionResult(action: () => Promise<void>) {
+  try {
+    await action();
+    return { ok: true as const };
+  } catch (error) {
+    return { ok: false as const, error: error instanceof Error ? error.message : "无法更新播放列表。" };
+  }
 }
 
 function sendMenuCommand(command: MenuCommand) {
@@ -355,6 +379,26 @@ function registerIpc() {
 
   ipcMain.handle("library:clear-cache", () => {
     return clearLibraryCacheFile(getLibraryCachePath());
+  });
+
+  ipcMain.handle("library:create-playlist", (_event, folderPath: string, name: string) => {
+    return toPlaylistMutationResult(() => createM3uPlaylistFile(folderPath, name));
+  });
+
+  ipcMain.handle("library:rename-playlist", (_event, folderPath: string, playlist: LibraryPlaylist, name: string) => {
+    return toPlaylistMutationResult(() => renameM3uPlaylistFile(folderPath, playlist, name));
+  });
+
+  ipcMain.handle("library:delete-playlist", (_event, folderPath: string, playlist: LibraryPlaylist) => {
+    return toMediaActionResult(() => deleteM3uPlaylistFile(folderPath, playlist, trashFile));
+  });
+
+  ipcMain.handle("library:remove-track-from-playlist", (_event, folderPath: string, playlist: LibraryPlaylist, track: Track) => {
+    return toPlaylistMutationResult(() => removeTrackFromM3uPlaylistFile(folderPath, playlist, track));
+  });
+
+  ipcMain.handle("library:add-track-to-playlist", (_event, folderPath: string, playlist: LibraryPlaylist, track: Track) => {
+    return toPlaylistMutationResult(() => addTrackToM3uPlaylistFile(folderPath, playlist, track));
   });
 
   ipcMain.handle("media:get-playable-url", (_event, filePath: string) => {

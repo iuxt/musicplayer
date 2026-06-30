@@ -1,5 +1,5 @@
 import { ListMusic, Trash2, X } from "lucide-react";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import type { Track } from "../../shared/types";
 import { VirtualizedList } from "./VirtualizedList";
 
@@ -8,11 +8,25 @@ interface PlaylistProps {
   currentTrack: Track | null;
   label: string;
   onSelectTrack: (track: Track) => void;
+  onTrackContextMenu: (track: Track, position: { x: number; y: number }) => void;
   onClear: () => void;
   onRemoveTrack: (track: Track) => void;
 }
 
-export const Playlist = memo(function Playlist({ tracks, currentTrack, label, onSelectTrack, onClear, onRemoveTrack }: PlaylistProps) {
+export const Playlist = memo(function Playlist({
+  tracks,
+  currentTrack,
+  label,
+  onSelectTrack,
+  onTrackContextMenu,
+  onClear,
+  onRemoveTrack
+}: PlaylistProps) {
+  const currentTrackIndex = useMemo(
+    () => (currentTrack ? tracks.findIndex((track) => track.id === currentTrack.id) : null),
+    [currentTrack, tracks]
+  );
+
   return (
     <section className="playlist-panel" aria-label="播放列表">
       <div className="playlist-heading">
@@ -37,11 +51,18 @@ export const Playlist = memo(function Playlist({ tracks, currentTrack, label, on
         items={tracks}
         getKey={(track) => track.id}
         emptyState={<p className="playlist-empty">队列为空</p>}
+        scrollToIndex={currentTrackIndex}
         renderItem={(track, index) => {
           const rowNumber = String(index + 1).padStart(2, "0");
 
           return (
-            <div className={`playlist-row ${currentTrack?.id === track.id ? "active" : ""}`}>
+            <div
+              className={`playlist-row ${currentTrack?.id === track.id ? "active" : ""}`}
+              onContextMenu={(event) => {
+                event.preventDefault();
+                onTrackContextMenu(track, { x: event.clientX, y: event.clientY });
+              }}
+            >
               <button className="playlist-track-button" onClick={() => onSelectTrack(track)} type="button">
                 <span className="playlist-row-index">{rowNumber}</span>
                 <strong>{track.title}</strong>

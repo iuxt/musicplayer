@@ -58,6 +58,35 @@ describe("scanMusicFolder", () => {
     });
   });
 
+  it("reads m3u playlists from the playlists folder", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "music-m3u-"));
+    const playlistsFolder = path.join(root, "playlists");
+    const albumFolder = path.join(root, "Album");
+    await mkdir(playlistsFolder, { recursive: true });
+    await mkdir(albumFolder, { recursive: true });
+    const firstTrackPath = path.join(root, "first.mp3");
+    const secondTrackPath = path.join(albumFolder, "second.flac");
+    const playlistPath = path.join(playlistsFolder, "90后.m3u");
+    await writeFile(firstTrackPath, "not-real-audio");
+    await writeFile(secondTrackPath, "not-real-audio");
+    await writeFile(
+      playlistPath,
+      ["#EXTM3U", "#EXTINF:180,Second", "../Album/second.flac", "../missing.mp3", "https://example.com/radio.mp3", "../first.mp3"].join("\n")
+    );
+
+    const result = await scanMusicFolder(root);
+    const trackIdsByPath = new Map(result.tracks.map((track) => [track.filePath, track.id]));
+
+    expect((result as { playlists?: Array<{ name: string; filePath: string; trackIds: string[] }> }).playlists).toEqual([
+      {
+        id: expect.any(String),
+        name: "90后",
+        filePath: playlistPath,
+        trackIds: [trackIdsByPath.get(secondTrackPath), trackIdsByPath.get(firstTrackPath)]
+      }
+    ]);
+  });
+
   it("matches sidecar lyrics without requiring identical filename casing", async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), "music-lyrics-case-"));
     await writeFile(path.join(root, "Song.flac"), "not-real-audio");

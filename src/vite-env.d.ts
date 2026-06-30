@@ -2,7 +2,9 @@
 
 import type {
   DesktopLyricsPayload,
+  LibraryPlaylist,
   MediaActionResult,
+  PlaylistMutationResult,
   ScanProgress,
   ScanResult,
   Track,
@@ -28,6 +30,19 @@ declare global {
       readLibraryCache: () => Promise<unknown | null>;
       writeLibraryCache: (result: ScanResult) => Promise<void>;
       clearLibraryCache: () => Promise<void>;
+      createPlaylist: (folderPath: string, name: string) => Promise<PlaylistMutationResult>;
+      renamePlaylist: (folderPath: string, playlist: LibraryPlaylist, name: string) => Promise<PlaylistMutationResult>;
+      deletePlaylist: (folderPath: string, playlist: LibraryPlaylist) => Promise<MediaActionResult>;
+      removeTrackFromPlaylist: (
+        folderPath: string,
+        playlist: LibraryPlaylist,
+        track: Track
+      ) => Promise<PlaylistMutationResult>;
+      addTrackToPlaylist: (
+        folderPath: string,
+        playlist: LibraryPlaylist,
+        track: Track
+      ) => Promise<PlaylistMutationResult>;
       getPlayableUrl: (filePath: string) => Promise<string>;
       getArtworkUrl: (filePath: string | null) => Promise<string | null>;
       getLyrics: (filePath: string | null) => Promise<string | null>;

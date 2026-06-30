@@ -1,4 +1,4 @@
-import { Edit3, FolderOpen, Trash2 } from "lucide-react";
+import { Edit3, FolderOpen, ListPlus, Trash2, X } from "lucide-react";
 import { useEffect, useMemo } from "react";
 
 interface TrackContextMenuProps {
@@ -7,11 +7,13 @@ interface TrackContextMenuProps {
   onClose: () => void;
   onShowInFolder: () => void;
   onEdit: () => void;
+  onAddToPlaylist: () => void;
+  onRemoveFromPlaylist?: () => void;
   onDeleteTrack: () => void;
 }
 
 const menuWidth = 236;
-const menuHeight = 140;
+const menuHeight = 216;
 const viewportPadding = 10;
 
 export function TrackContextMenu({
@@ -20,6 +22,8 @@ export function TrackContextMenu({
   onClose,
   onShowInFolder,
   onEdit,
+  onAddToPlaylist,
+  onRemoveFromPlaylist,
   onDeleteTrack
 }: TrackContextMenuProps) {
   useEffect(() => {
@@ -54,6 +58,16 @@ export function TrackContextMenu({
           <Edit3 size={16} />
           编辑音乐信息
         </button>
+        <button role="menuitem" type="button" disabled={busy} onClick={onAddToPlaylist}>
+          <ListPlus size={16} />
+          添加到播放列表
+        </button>
+        {onRemoveFromPlaylist ? (
+          <button role="menuitem" type="button" disabled={busy} onClick={onRemoveFromPlaylist}>
+            <X size={16} />
+            从播放列表移除
+          </button>
+        ) : null}
         <button className="danger" role="menuitem" type="button" disabled={busy} onClick={onDeleteTrack}>
           <Trash2 size={16} />
           移到废纸篓

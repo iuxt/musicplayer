@@ -1,6 +1,6 @@
 import { act, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { DesktopLyricsPayload } from "../shared/types";
+import type { DesktopLyricsPayload, LibraryPlaylist, Track } from "../shared/types";
 import { DesktopLyricsWindow } from "./DesktopLyricsWindow";
 
 let updateHandler: ((payload: DesktopLyricsPayload) => void) | null = null;
@@ -27,6 +27,26 @@ beforeEach(() => {
     readLibraryCache: vi.fn(async () => null),
     writeLibraryCache: vi.fn(async () => undefined),
     clearLibraryCache: vi.fn(async () => undefined),
+    createPlaylist: vi.fn(async (_folderPath: string, name: string) => ({
+      ok: true as const,
+      playlist: { id: name, name, filePath: `/music/playlists/${name}.m3u`, trackIds: [] }
+    })),
+    renamePlaylist: vi.fn(async (_folderPath: string, playlist: LibraryPlaylist, name: string) => ({
+      ok: true as const,
+      playlist: { ...playlist, id: name, name, filePath: `/music/playlists/${name}.m3u` }
+    })),
+    deletePlaylist: vi.fn(async () => ({ ok: true as const })),
+    removeTrackFromPlaylist: vi.fn(async (_folderPath: string, playlist: LibraryPlaylist, track: Track) => ({
+      ok: true as const,
+      playlist: { ...playlist, trackIds: playlist.trackIds.filter((trackId) => trackId !== track.id) }
+    })),
+    addTrackToPlaylist: vi.fn(async (_folderPath: string, playlist: LibraryPlaylist, track: Track) => ({
+      ok: true as const,
+      playlist: {
+        ...playlist,
+        trackIds: playlist.trackIds.includes(track.id) ? playlist.trackIds : [...playlist.trackIds, track.id]
+      }
+    })),
     getPlayableUrl: vi.fn(),
     getArtworkUrl: vi.fn(),
     getLyrics: vi.fn(),

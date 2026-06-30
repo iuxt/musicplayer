@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { readLibraryPlaylists } from "./playlists.js";
 import type { ScanProgress, ScanResult, ScanWarning, SupportedAudioExtension, Track } from "../shared/types.js";
 
 const supportedExtensions = new Set<SupportedAudioExtension>(["mp3", "m4a", "aac", "wav", "flac", "ogg"]);
@@ -83,11 +84,13 @@ export async function scanMusicFolder(folderPath: string, options: ScanOptions =
   }
 
   await walk(folderPath);
+  const playlists = await readLibraryPlaylists(folderPath, tracks, warnings);
   report(folderPath, true);
 
   return {
     folderPath,
     tracks: tracks.sort((a, b) => a.title.localeCompare(b.title)),
+    playlists,
     warnings
   };
 }

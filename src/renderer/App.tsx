@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ScanProgress, ScanResult, ScanWarning, Track, TrackMetadataUpdate } from "../shared/types";
+import type { LibraryPlaylist, ScanProgress, ScanResult, ScanWarning, Track, TrackMetadataUpdate } from "../shared/types";
 import { type AppSettings, normalizeAppSettings, readAppSettings, writeAppSettings } from "./appSettings";
+import { AddToPlaylistDialog } from "./components/AddToPlaylistDialog";
 import { EditTrackMetadataDialog } from "./components/EditTrackMetadataDialog";
 import { EmptyState } from "./components/EmptyState";
 import { FullscreenLyrics } from "./components/FullscreenLyrics";
 import { LibraryList } from "./components/LibraryList";
 import { PlayerBar } from "./components/PlayerBar";
+import { PlaylistContextMenu } from "./components/PlaylistContextMenu";
+import { PlaylistNameDialog } from "./components/PlaylistNameDialog";
 import { Playlist } from "./components/Playlist";
 import { ScanningState } from "./components/ScanningState";
 import { SettingsPage } from "./components/SettingsPage";
@@ -38,15 +41,21 @@ type PlaybackState = {
 
 type AppView = "library" | "settings";
 type MediaKeyCommand = "play-pause" | "next" | "previous";
+type PlaylistNameDialogState =
+  | { mode: "create"; initialName: string; error: string | null }
+  | { mode: "rename"; playlist: LibraryPlaylist; initialName: string; error: string | null }
+  | { mode: "create-and-add"; track: Track; initialName: string; error: string | null };
 
 export function App() {
   const [folderPath, setFolderPath] = useState<string | null>(null);
   const [tracks, setTracks] = useState<Track[]>([]);
+  const [playlists, setPlaylists] = useState<LibraryPlaylist[]>([]);
   const [warnings, setWarnings] = useState<ScanWarning[]>([]);
   const [scanProgress, setScanProgress] = useState<ScanProgress | null>(null);
   const [isScanning, setIsScanning] = useState(false);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<LibraryCategory>("songs");
+  const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<AppView>("library");
   const [appSettings, setAppSettings] = useState<AppSettings>(() => readAppSettings());
   const [availableFontFamilies, setAvailableFontFamilies] = useState<string[]>([""]);
@@ -63,6 +72,10 @@ export function App() {
   const [isFullscreenLyricsOpen, setIsFullscreenLyricsOpen] = useState(false);
   const [pendingPlaybackRestore, setPendingPlaybackRestore] = useState<PlaybackState | null>(null);
   const [trackMenu, setTrackMenu] = useState<{ track: Track; position: { x: number; y: number } } | null>(null);
+  const [playlistMenu, setPlaylistMenu] = useState<{ playlist: LibraryPlaylist; position: { x: number; y: number } } | null>(null);
+  const [addingTrack, setAddingTrack] = useState<Track | null>(null);
+  const [addToPlaylistError, setAddToPlaylistError] = useState<string | null>(null);
+  const [playlistNameDialog, setPlaylistNameDialog] = useState<PlaylistNameDialogState | null>(null);
   const [editingTrack, setEditingTrack] = useState<Track | null>(null);
   const [metadataError, setMetadataError] = useState<string | null>(null);
   const [pendingMediaAction, setPendingMediaAction] = useState(false);
@@ -87,10 +100,12 @@ export function App() {
   const loadLibraryResult = useCallback((result: ScanResult) => {
     setFolderPath(result.folderPath);
     setTracks(result.tracks);
+    setPlaylists(result.playlists);
     setWarnings(result.warnings);
     setPlayQueue(result.tracks);
     setIsPlayQueueExplicit(false);
     setPlaylistLabel(DEFAULT_PLAYLIST_LABEL);
+    setActivePlaylistId(null);
     setSelectedFolderPath(null);
     localStorage.setItem(LAST_FOLDER_STORAGE_KEY, result.folderPath);
 
@@ -111,24 +126,37 @@ export function App() {
     setPendingPlaybackRestore(playbackState);
   }, []);
 
+  const tracksById = useMemo(() => new Map(tracks.map((track) => [track.id, track])), [tracks]);
+  const activePlaylist = useMemo(
+    () => playlists.find((playlist) => playlist.id === activePlaylistId) ?? null,
+    [activePlaylistId, playlists]
+  );
+  const activePlaylistTracks = useMemo(
+    () => (activePlaylist ? getPlaylistTracks(activePlaylist, tracksById) : []),
+    [activePlaylist, tracksById]
+  );
+
   const filteredTracks = useMemo(() => {
     const query = search.trim().toLowerCase();
-    if (!query) {
-      return tracks;
-    }
-
-    return tracks.filter((track) =>
-      [track.title, track.artist, track.album].some((value) => value.toLowerCase().includes(query))
-    );
+    return filterTracks(tracks, query);
   }, [search, tracks]);
 
+  const filteredActivePlaylistTracks = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return filterTracks(activePlaylistTracks, query);
+  }, [activePlaylistTracks, search]);
+
   const visibleTracks = useMemo(() => {
+    if (activePlaylist) {
+      return filteredActivePlaylistTracks;
+    }
+
     if (activeCategory === "albums" || activeCategory === "artists") {
       return tracks;
     }
 
     return filteredTracks;
-  }, [activeCategory, filteredTracks, tracks]);
+  }, [activeCategory, activePlaylist, filteredActivePlaylistTracks, filteredTracks, tracks]);
 
   const playlistTracks = useMemo(() => {
     if (isPlayQueueExplicit) {
@@ -167,6 +195,15 @@ export function App() {
       setAppError("无法保存音乐库缓存。");
     }
   }, []);
+
+  const persistPlaylistsCache = useCallback(
+    (nextPlaylists: LibraryPlaylist[]) => {
+      if (folderPath) {
+        void persistLibraryCache({ folderPath, tracks, playlists: nextPlaylists, warnings });
+      }
+    },
+    [folderPath, persistLibraryCache, tracks, warnings]
+  );
 
   const changeFullscreenLyricsFontFamily = useCallback(
     (fontFamily: string) => {
@@ -418,19 +455,20 @@ export function App() {
 
   useEffect(() => {
     return window.musicApi.onMediaKeyCommand((command) => {
+      const currentPlayer = playerRef.current;
       if (command === "play-pause") {
-        void player.playPause();
+        void currentPlayer.playPause();
         return;
       }
 
       if (command === "next") {
-        void player.next();
+        void currentPlayer.next();
         return;
       }
 
-      void player.previous();
+      void currentPlayer.previous();
     });
-  }, [player.next, player.playPause, player.previous]);
+  }, []);
 
   useEffect(() => {
     return window.musicApi.onMenuCommand((command) => {
@@ -599,10 +637,228 @@ export function App() {
   const changeCategory = useCallback((category: LibraryCategory) => {
     setActiveView("library");
     setActiveCategory(category);
+    setActivePlaylistId(null);
     if (category !== "folders") {
       setSelectedFolderPath(null);
     }
   }, []);
+
+  const selectLibraryPlaylist = useCallback(
+    (playlistId: string) => {
+      const playlist = playlists.find((candidate) => candidate.id === playlistId);
+      if (!playlist) {
+        return;
+      }
+
+      const nextPlaylistTracks = getPlaylistTracks(playlist, tracksById);
+      setActiveView("library");
+      setActiveCategory("songs");
+      setActivePlaylistId(playlist.id);
+      setSelectedFolderPath(null);
+      setPlayQueue(nextPlaylistTracks);
+      setIsPlayQueueExplicit(true);
+      setPlaylistLabel(playlist.name);
+    },
+    [playlists, tracksById]
+  );
+
+  const openCreateLibraryPlaylistDialog = useCallback(() => {
+    if (!folderPath) {
+      setAppError("请先选择音乐文件夹。");
+      return;
+    }
+
+    setAppError(null);
+    setPlaylistNameDialog({ mode: "create", initialName: "", error: null });
+  }, [folderPath]);
+
+  const openRenameLibraryPlaylistDialog = useCallback(
+    (playlist: LibraryPlaylist) => {
+      if (!folderPath) {
+        return;
+      }
+
+      setAppError(null);
+      setPlaylistMenu(null);
+      setPlaylistNameDialog({ mode: "rename", playlist, initialName: playlist.name, error: null });
+    },
+    [folderPath]
+  );
+
+  const openCreatePlaylistAndAddTrackDialog = useCallback(() => {
+    if (!folderPath || !addingTrack) {
+      setAddToPlaylistError("请先选择音乐文件夹。");
+      return;
+    }
+
+    setAppError(null);
+    setAddToPlaylistError(null);
+    setPlaylistNameDialog({ mode: "create-and-add", track: addingTrack, initialName: "", error: null });
+  }, [addingTrack, folderPath]);
+
+  const submitPlaylistName = useCallback(
+    async (name: string) => {
+      if (!folderPath || !playlistNameDialog) {
+        return;
+      }
+
+      const currentDialog = playlistNameDialog;
+      setPendingMediaAction(true);
+      setAppError(null);
+      setAddToPlaylistError(null);
+      setPlaylistNameDialog({ ...currentDialog, error: null });
+      try {
+        if (currentDialog.mode === "create") {
+          const result = await window.musicApi.createPlaylist(folderPath, name);
+          if (!result.ok) {
+            setPlaylistNameDialog({ ...currentDialog, error: result.error });
+            return;
+          }
+
+          const nextPlaylists = sortLibraryPlaylists([...playlists, result.playlist]);
+          setPlaylists(nextPlaylists);
+          persistPlaylistsCache(nextPlaylists);
+          setActiveView("library");
+          setActiveCategory("songs");
+          setActivePlaylistId(result.playlist.id);
+          setSelectedFolderPath(null);
+          setPlayQueue([]);
+          setIsPlayQueueExplicit(true);
+          setPlaylistLabel(result.playlist.name);
+          setPlaylistNameDialog(null);
+          return;
+        }
+
+        if (currentDialog.mode === "rename") {
+          const result = await window.musicApi.renamePlaylist(folderPath, currentDialog.playlist, name);
+          if (!result.ok) {
+            setPlaylistNameDialog({ ...currentDialog, error: result.error });
+            return;
+          }
+
+          const nextPlaylists = playlists
+            .map((candidate) => (candidate.id === currentDialog.playlist.id ? result.playlist : candidate))
+            .sort((first, second) => first.name.localeCompare(second.name));
+          setPlaylists(nextPlaylists);
+          persistPlaylistsCache(nextPlaylists);
+          if (activePlaylistId === currentDialog.playlist.id) {
+            setActivePlaylistId(result.playlist.id);
+            setPlaylistLabel(result.playlist.name);
+          }
+          setPlaylistNameDialog(null);
+          return;
+        }
+
+        const created = await window.musicApi.createPlaylist(folderPath, name);
+        if (!created.ok) {
+          setPlaylistNameDialog({ ...currentDialog, error: created.error });
+          return;
+        }
+
+        const added = await window.musicApi.addTrackToPlaylist(folderPath, created.playlist, currentDialog.track);
+        if (!added.ok) {
+          const nextPlaylists = sortLibraryPlaylists([...playlists, created.playlist]);
+          setPlaylists(nextPlaylists);
+          persistPlaylistsCache(nextPlaylists);
+          setAddToPlaylistError(added.error);
+          setPlaylistNameDialog(null);
+          return;
+        }
+
+        const nextPlaylists = sortLibraryPlaylists([...playlists, added.playlist]);
+        setPlaylists(nextPlaylists);
+        persistPlaylistsCache(nextPlaylists);
+        setAddingTrack(null);
+        setPlaylistNameDialog(null);
+      } catch (error) {
+        setPlaylistNameDialog({
+          ...currentDialog,
+          error: error instanceof Error ? error.message : "无法更新播放列表。"
+        });
+      } finally {
+        setPendingMediaAction(false);
+      }
+    },
+    [activePlaylistId, folderPath, persistPlaylistsCache, playlistNameDialog, playlists]
+  );
+
+  const deleteLibraryPlaylist = useCallback(
+    async (playlist: LibraryPlaylist) => {
+      if (!folderPath) {
+        return;
+      }
+
+      const confirmed = window.confirm(`删除播放列表“${playlist.name}”？音乐文件不会被删除。`);
+      if (!confirmed) {
+        setPlaylistMenu(null);
+        return;
+      }
+
+      setPendingMediaAction(true);
+      setAppError(null);
+      try {
+        const result = await window.musicApi.deletePlaylist(folderPath, playlist);
+        if (!result.ok) {
+          setAppError(result.error);
+          return;
+        }
+
+        const nextPlaylists = playlists.filter((candidate) => candidate.id !== playlist.id);
+        setPlaylists(nextPlaylists);
+        persistPlaylistsCache(nextPlaylists);
+        if (activePlaylistId === playlist.id) {
+          setActivePlaylistId(null);
+          setActiveCategory("songs");
+          setPlayQueue(tracks);
+          setIsPlayQueueExplicit(false);
+          setPlaylistLabel(DEFAULT_PLAYLIST_LABEL);
+        }
+      } catch (error) {
+        setAppError(error instanceof Error ? error.message : "无法删除播放列表。");
+      } finally {
+        setPendingMediaAction(false);
+        setPlaylistMenu(null);
+      }
+    },
+    [activePlaylistId, folderPath, persistPlaylistsCache, playlists, tracks]
+  );
+
+  const addTrackToLibraryPlaylist = useCallback(
+    async (playlist: LibraryPlaylist, track: Track) => {
+      if (!folderPath) {
+        setAddToPlaylistError("请先选择音乐文件夹。");
+        return;
+      }
+
+      setPendingMediaAction(true);
+      setAppError(null);
+      setAddToPlaylistError(null);
+      try {
+        const result = await window.musicApi.addTrackToPlaylist(folderPath, playlist, track);
+        if (!result.ok) {
+          setAddToPlaylistError(result.error);
+          return;
+        }
+
+        const nextPlaylists = replaceLibraryPlaylist(playlists, playlist, result.playlist);
+        setPlaylists(nextPlaylists);
+        persistPlaylistsCache(nextPlaylists);
+        if (activePlaylistId === playlist.id) {
+          const nextPlaylistTracks = getPlaylistTracks(result.playlist, tracksById);
+          setPlayQueue(nextPlaylistTracks);
+          setIsPlayQueueExplicit(true);
+          setPlaylistLabel(result.playlist.name);
+        }
+        setAddingTrack(null);
+      } catch (error) {
+        setAddToPlaylistError(error instanceof Error ? error.message : "无法添加到播放列表。");
+      } finally {
+        setPendingMediaAction(false);
+      }
+    },
+    [activePlaylistId, folderPath, persistPlaylistsCache, playlists, tracksById]
+  );
+
 
   const clearLibraryCache = useCallback(() => {
     setCacheStatus(null);
@@ -637,13 +893,33 @@ export function App() {
       }
 
       const nextQueue =
-        queueTracks ?? (activeCategory === "folders" ? getTracksAtFolderLevel(filteredTracks, selectedFolderPath) : filteredTracks);
+        queueTracks ??
+        (activePlaylist
+          ? activePlaylistTracks
+          : activeCategory === "folders"
+            ? getTracksAtFolderLevel(filteredTracks, selectedFolderPath)
+            : filteredTracks);
       setPlayQueue(nextQueue);
       setIsPlayQueueExplicit(true);
-      setPlaylistLabel(activeCategory === "folders" ? selectedFolderPath ?? DEFAULT_FOLDER_PLAYLIST_LABEL : DEFAULT_PLAYLIST_LABEL);
+      setPlaylistLabel(
+        activePlaylist
+          ? activePlaylist.name
+          : activeCategory === "folders"
+            ? selectedFolderPath ?? DEFAULT_FOLDER_PLAYLIST_LABEL
+            : DEFAULT_PLAYLIST_LABEL
+      );
       await player.playTrack(track);
     },
-    [activeCategory, filteredTracks, player.playTrack, playlistTracks, search, selectedFolderPath]
+    [
+      activeCategory,
+      activePlaylist,
+      activePlaylistTracks,
+      filteredTracks,
+      player.playTrack,
+      playlistTracks,
+      search,
+      selectedFolderPath
+    ]
   );
 
   const selectPlaylistTrack = useCallback(async (track: Track) => {
@@ -664,17 +940,50 @@ export function App() {
     setIsPlayQueueExplicit(true);
   }, [playlistTracks]);
 
+  const removeTrackFromActivePlaylist = useCallback(
+    async (track: Track) => {
+      if (!folderPath || !activePlaylist) {
+        return;
+      }
+
+      setPendingMediaAction(true);
+      setAppError(null);
+      try {
+        const result = await window.musicApi.removeTrackFromPlaylist(folderPath, activePlaylist, track);
+        if (!result.ok) {
+          setAppError(result.error);
+          return;
+        }
+
+        const nextPlaylists = playlists.map((candidate) =>
+          candidate.id === activePlaylist.id ? result.playlist : candidate
+        );
+        const nextPlaylistTracks = getPlaylistTracks(result.playlist, tracksById);
+        setPlaylists(nextPlaylists);
+        persistPlaylistsCache(nextPlaylists);
+        setPlayQueue(nextPlaylistTracks);
+        setIsPlayQueueExplicit(true);
+      } catch (error) {
+        setAppError(error instanceof Error ? error.message : "无法从播放列表移除歌曲。");
+      } finally {
+        setPendingMediaAction(false);
+        setTrackMenu(null);
+      }
+    },
+    [activePlaylist, folderPath, persistPlaylistsCache, playlists, tracksById]
+  );
+
   const commitTracks = useCallback(
     (updater: (currentTracks: Track[]) => Track[]) => {
       setTracks((currentTracks) => {
         const nextTracks = updater(currentTracks);
         if (folderPath) {
-          void persistLibraryCache({ folderPath, tracks: nextTracks, warnings });
+          void persistLibraryCache({ folderPath, tracks: nextTracks, playlists, warnings });
         }
         return nextTracks;
       });
     },
-    [folderPath, persistLibraryCache, warnings]
+    [folderPath, persistLibraryCache, playlists, warnings]
   );
 
   const replaceTrack = useCallback(
@@ -693,8 +1002,14 @@ export function App() {
       const currentQueueIndex = playlistTracks.findIndex((queuedTrack) => queuedTrack.id === trackToRemove.id);
       const nextQueue = playlistTracks.filter((queuedTrack) => queuedTrack.id !== trackToRemove.id);
       const nextTrack = currentQueueIndex >= 0 ? nextQueue[currentQueueIndex] ?? null : null;
+      const nextTracks = tracks.filter((existingTrack) => existingTrack.id !== trackToRemove.id);
+      const nextPlaylists = removeTrackFromLibraryPlaylists(playlists, trackToRemove.id);
 
-      commitTracks((currentTracks) => currentTracks.filter((existingTrack) => existingTrack.id !== trackToRemove.id));
+      setTracks(nextTracks);
+      setPlaylists(nextPlaylists);
+      if (folderPath) {
+        void persistLibraryCache({ folderPath, tracks: nextTracks, playlists: nextPlaylists, warnings });
+      }
       setPlayQueue(nextQueue);
       setIsPlayQueueExplicit(true);
       removePlaybackStateForTrack(trackToRemove.id);
@@ -728,7 +1043,7 @@ export function App() {
         await currentPlayer.selectTrack(nextTrack);
       }
     },
-    [commitTracks, playlistTracks]
+    [folderPath, persistLibraryCache, playlistTracks, playlists, tracks, warnings]
   );
 
   const showTrackInFolder = useCallback(async (track: Track) => {
@@ -825,9 +1140,14 @@ export function App() {
       <div className="window-drag-region" aria-hidden="true" />
       <Sidebar
         trackCount={tracks.length}
+        playlists={playlists}
         activeCategory={activeCategory}
+        activePlaylistId={activeView === "library" ? activePlaylistId : null}
         activeView={activeView}
         onCategoryChange={changeCategory}
+        onCreatePlaylist={openCreateLibraryPlaylistDialog}
+        onPlaylistChange={selectLibraryPlaylist}
+        onPlaylistContextMenu={(playlist, position) => setPlaylistMenu({ playlist, position })}
         onSettingsOpen={openSettings}
       />
 
@@ -870,7 +1190,8 @@ export function App() {
               category={activeCategory}
               tracks={visibleTracks}
               currentTrack={player.currentTrack}
-              contextMenuTrackId={trackMenu?.track.id ?? null}
+              heading={activePlaylist?.name}
+              eyebrow={activePlaylist ? "播放列表" : undefined}
               search={search}
               selectedFolderPath={selectedFolderPath}
               onSearchChange={setSearch}
@@ -884,6 +1205,7 @@ export function App() {
               currentTrack={player.currentTrack}
               label={playlistLabel}
               onSelectTrack={selectPlaylistTrack}
+              onTrackContextMenu={(track, position) => setTrackMenu({ track, position })}
               onClear={clearPlaylist}
               onRemoveTrack={removePlaylistTrack}
             />
@@ -917,8 +1239,62 @@ export function App() {
             setEditingTrack(trackMenu.track);
             setTrackMenu(null);
           }}
+          onAddToPlaylist={() => {
+            setAddToPlaylistError(null);
+            setAddingTrack(trackMenu.track);
+            setTrackMenu(null);
+          }}
+          onRemoveFromPlaylist={
+            activePlaylist?.trackIds.includes(trackMenu.track.id)
+              ? () => {
+                  void removeTrackFromActivePlaylist(trackMenu.track);
+                }
+              : undefined
+          }
           onDeleteTrack={() => {
             void deleteTrackFiles(trackMenu.track);
+          }}
+        />
+      ) : null}
+
+      {playlistMenu ? (
+        <PlaylistContextMenu
+          position={playlistMenu.position}
+          busy={pendingMediaAction}
+          onClose={() => setPlaylistMenu(null)}
+          onRename={() => {
+            openRenameLibraryPlaylistDialog(playlistMenu.playlist);
+          }}
+          onDelete={() => {
+            void deleteLibraryPlaylist(playlistMenu.playlist);
+          }}
+        />
+      ) : null}
+
+      {addingTrack ? (
+        <AddToPlaylistDialog
+          track={addingTrack}
+          playlists={playlists}
+          busy={pendingMediaAction}
+          error={addToPlaylistError}
+          onClose={() => setAddingTrack(null)}
+          onCreatePlaylist={openCreatePlaylistAndAddTrackDialog}
+          onAddToPlaylist={(playlist) => {
+            void addTrackToLibraryPlaylist(playlist, addingTrack);
+          }}
+        />
+      ) : null}
+
+      {playlistNameDialog ? (
+        <PlaylistNameDialog
+          title={playlistNameDialog.mode === "rename" ? "重命名播放列表" : "新建播放列表"}
+          initialName={playlistNameDialog.initialName}
+          submitLabel={playlistNameDialog.mode === "rename" ? "保存" : "创建"}
+          busy={pendingMediaAction}
+          error={playlistNameDialog.error}
+          onCancel={() => setPlaylistNameDialog(null)}
+          onSubmit={(name) => {
+            void submitPlaylistName(name);
           }}
         />
       ) : null}
@@ -1052,6 +1428,61 @@ function sortTracksByTitle(tracks: Track[]) {
   return [...tracks].sort((first, second) => first.title.localeCompare(second.title));
 }
 
+function getPlaylistTracks(playlist: LibraryPlaylist, tracksById: Map<string, Track>) {
+  return playlist.trackIds.map((trackId) => tracksById.get(trackId)).filter((track): track is Track => Boolean(track));
+}
+
+function sortLibraryPlaylists(playlists: LibraryPlaylist[]) {
+  return [...playlists].sort((first, second) => first.name.localeCompare(second.name));
+}
+
+function replaceLibraryPlaylist(
+  playlists: LibraryPlaylist[],
+  playlistToReplace: LibraryPlaylist,
+  updatedPlaylist: LibraryPlaylist
+) {
+  let didReplace = false;
+  const nextPlaylists = playlists.map((playlist) => {
+    if (playlist.id !== playlistToReplace.id && playlist.id !== updatedPlaylist.id) {
+      return playlist;
+    }
+
+    didReplace = true;
+    return updatedPlaylist;
+  });
+
+  if (!didReplace) {
+    nextPlaylists.push(updatedPlaylist);
+  }
+
+  return sortLibraryPlaylists(nextPlaylists);
+}
+
+function removeTrackFromLibraryPlaylists(playlists: LibraryPlaylist[], trackId: string) {
+  let didUpdate = false;
+  const nextPlaylists = playlists.map((playlist) => {
+    if (!playlist.trackIds.includes(trackId)) {
+      return playlist;
+    }
+
+    didUpdate = true;
+    return {
+      ...playlist,
+      trackIds: playlist.trackIds.filter((playlistTrackId) => playlistTrackId !== trackId)
+    };
+  });
+
+  return didUpdate ? nextPlaylists : playlists;
+}
+
+function filterTracks(tracks: Track[], query: string) {
+  if (!query) {
+    return tracks;
+  }
+
+  return tracks.filter((track) => [track.title, track.artist, track.album].some((value) => value.toLowerCase().includes(query)));
+}
+
 function isPlaybackStateForTracks(value: unknown, tracks: Track[]): value is PlaybackState {
   if (!isRecord(value)) {
     return false;
@@ -1088,7 +1519,14 @@ function isScanResultForFolder(value: unknown, folderPath: string): value is Sca
     return false;
   }
 
-  return value.folderPath === folderPath && Array.isArray(value.tracks) && value.tracks.every(isTrack) && Array.isArray(value.warnings);
+  return (
+    value.folderPath === folderPath &&
+    Array.isArray(value.tracks) &&
+    value.tracks.every(isTrack) &&
+    Array.isArray(value.playlists) &&
+    value.playlists.every(isLibraryPlaylist) &&
+    Array.isArray(value.warnings)
+  );
 }
 
 function isTrack(value: unknown): value is Track {
@@ -1110,6 +1548,20 @@ function isTrack(value: unknown): value is Track {
     (typeof value.lyricsPath === "string" || value.lyricsPath === null) &&
     typeof value.hasLyrics === "boolean" &&
     typeof value.folderPath === "string"
+  );
+}
+
+function isLibraryPlaylist(value: unknown): value is LibraryPlaylist {
+  if (!isRecord(value)) {
+    return false;
+  }
+
+  return (
+    typeof value.id === "string" &&
+    typeof value.name === "string" &&
+    typeof value.filePath === "string" &&
+    Array.isArray(value.trackIds) &&
+    value.trackIds.every((trackId) => typeof trackId === "string")
   );
 }
 

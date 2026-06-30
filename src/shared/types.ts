@@ -27,9 +27,17 @@ export interface ScanProgress {
   warningCount: number;
 }
 
+export interface LibraryPlaylist {
+  id: string;
+  name: string;
+  filePath: string;
+  trackIds: string[];
+}
+
 export interface ScanResult {
   folderPath: string;
   tracks: Track[];
+  playlists: LibraryPlaylist[];
   warnings: ScanWarning[];
 }
 
@@ -45,6 +53,10 @@ export interface TrackMetadataFields extends TrackMetadataUpdate {
 }
 
 export type MediaActionResult = { ok: true } | { ok: false; error: string };
+
+export type PlaylistMutationResult =
+  | { ok: true; playlist: LibraryPlaylist }
+  | { ok: false; error: string };
 
 export interface TrashFileEntry {
   filePath: string;

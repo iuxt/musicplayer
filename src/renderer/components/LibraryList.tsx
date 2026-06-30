@@ -11,6 +11,8 @@ interface LibraryListProps {
   tracks: Track[];
   currentTrack: Track | null;
   contextMenuTrackId?: string | null;
+  heading?: string | null;
+  eyebrow?: string;
   search: string;
   selectedFolderPath: string | null;
   onSearchChange: (value: string) => void;
@@ -33,6 +35,8 @@ export const LibraryList = memo(function LibraryList({
   tracks,
   currentTrack,
   contextMenuTrackId = null,
+  heading: headingOverride = null,
+  eyebrow = "音乐库",
   search,
   selectedFolderPath,
   onSearchChange,
@@ -54,13 +58,13 @@ export const LibraryList = memo(function LibraryList({
     () => (category === "folders" ? buildFolderBrowserRows(tracks, selectedFolderPath) : []),
     [category, selectedFolderPath, tracks]
   );
-  const heading = isFolderDetail ? selectedFolderPath : headings[category];
+  const heading = headingOverride ?? (isFolderDetail ? selectedFolderPath : headings[category]);
 
   return (
     <section className="library-panel" aria-label="音乐库浏览器">
       <div className="panel-heading">
         <div>
-          <p className="eyebrow">音乐库</p>
+          <p className="eyebrow">{eyebrow}</p>
           <h2>{heading}</h2>
         </div>
         <label className="search-box">

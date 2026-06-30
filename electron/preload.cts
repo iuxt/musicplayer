@@ -1,6 +1,9 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
 import type {
   DesktopLyricsPayload,
+  LibraryPlaylist,
+  MediaActionResult,
+  PlaylistMutationResult,
   ScanProgress,
   ScanResult,
   Track,
@@ -20,6 +23,24 @@ contextBridge.exposeInMainWorld("musicApi", {
   readLibraryCache: (): Promise<unknown | null> => ipcRenderer.invoke("library:read-cache"),
   writeLibraryCache: (result: ScanResult): Promise<void> => ipcRenderer.invoke("library:write-cache", result),
   clearLibraryCache: (): Promise<void> => ipcRenderer.invoke("library:clear-cache"),
+  createPlaylist: (folderPath: string, name: string): Promise<PlaylistMutationResult> =>
+    ipcRenderer.invoke("library:create-playlist", folderPath, name),
+  renamePlaylist: (folderPath: string, playlist: LibraryPlaylist, name: string): Promise<PlaylistMutationResult> =>
+    ipcRenderer.invoke("library:rename-playlist", folderPath, playlist, name),
+  deletePlaylist: (folderPath: string, playlist: LibraryPlaylist): Promise<MediaActionResult> =>
+    ipcRenderer.invoke("library:delete-playlist", folderPath, playlist),
+  removeTrackFromPlaylist: (
+    folderPath: string,
+    playlist: LibraryPlaylist,
+    track: Track
+  ): Promise<PlaylistMutationResult> =>
+    ipcRenderer.invoke("library:remove-track-from-playlist", folderPath, playlist, track),
+  addTrackToPlaylist: (
+    folderPath: string,
+    playlist: LibraryPlaylist,
+    track: Track
+  ): Promise<PlaylistMutationResult> =>
+    ipcRenderer.invoke("library:add-track-to-playlist", folderPath, playlist, track),
   getPlayableUrl: (filePath: string): Promise<string> => ipcRenderer.invoke("media:get-playable-url", filePath),
   getArtworkUrl: (filePath: string | null): Promise<string | null> => ipcRenderer.invoke("media:get-artwork-url", filePath),
   getLyrics: (filePath: string | null): Promise<string | null> => ipcRenderer.invoke("media:get-lyrics", filePath),

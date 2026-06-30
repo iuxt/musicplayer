@@ -3,14 +3,26 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ScanResult, Track, TrashTrackFilesResult } from "../shared/types";
 import { App } from "./App";
 
+type TestLibraryPlaylist = {
+  id: string;
+  name: string;
+  filePath: string;
+  trackIds: string[];
+};
+
+type TestScanResult = ScanResult & {
+  playlists: TestLibraryPlaylist[];
+};
+
 const rememberedFolder = "/Users/test/Music";
 const track = makeTrack("wav-1", "Wave Song", "Artist", "Wave Album", "Wave Album");
 const folderTrack = makeTrack("mp3-folder", "Artist Folder Song", "Second Artist", "Loose Songs", "Second Artist");
 const secondTrack = makeTrack("mp3-1", "Second Song", "Second Artist", "Second Album", "Second Artist/Second Album");
 const thirdTrack = makeTrack("mp3-2", "Third Song", "Second Artist", "Second Album", "Second Artist/Second Album");
-const scanResult: ScanResult = {
+const scanResult: TestScanResult = {
   folderPath: rememberedFolder,
   tracks: [track, folderTrack, secondTrack, thirdTrack],
+  playlists: [],
   warnings: []
 };
 const libraryCacheKey = "musicplayer:library-cache";
@@ -68,6 +80,39 @@ beforeEach(() => {
     ensureSystemMediaShortcutsPermission: vi.fn(async () => ({ ok: true as const })),
     setSystemMediaShortcutsEnabled: vi.fn(async () => ({ ok: true as const })),
     setCloseWindowStopsPlayback: vi.fn(async () => undefined),
+    createPlaylist: vi.fn(async (_folderPath: string, name: string) => ({
+      ok: true as const,
+      playlist: {
+        id: `playlist-${name}`,
+        name,
+        filePath: `${rememberedFolder}/playlists/${name}.m3u`,
+        trackIds: []
+      }
+    })),
+    renamePlaylist: vi.fn(async (_folderPath: string, playlist: TestLibraryPlaylist, name: string) => ({
+      ok: true as const,
+      playlist: {
+        ...playlist,
+        id: `playlist-${name}`,
+        name,
+        filePath: `${rememberedFolder}/playlists/${name}.m3u`
+      }
+    })),
+    deletePlaylist: vi.fn(async () => ({ ok: true as const })),
+    removeTrackFromPlaylist: vi.fn(async (_folderPath: string, playlist: TestLibraryPlaylist, trackToRemove: Track) => ({
+      ok: true as const,
+      playlist: {
+        ...playlist,
+        trackIds: playlist.trackIds.filter((trackId) => trackId !== trackToRemove.id)
+      }
+    })),
+    addTrackToPlaylist: vi.fn(async (_folderPath: string, playlist: TestLibraryPlaylist, trackToAdd: Track) => ({
+      ok: true as const,
+      playlist: {
+        ...playlist,
+        trackIds: playlist.trackIds.includes(trackToAdd.id) ? playlist.trackIds : [...playlist.trackIds, trackToAdd.id]
+      }
+    })),
     onDesktopLyricsUpdate: vi.fn(() => () => undefined),
     onDesktopLyricsClosed: vi.fn((callback) => {
       desktopLyricsClosedHandler = callback;
@@ -117,6 +162,185 @@ describe("App", () => {
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
     expect(window.musicApi.rescanLibrary).not.toHaveBeenCalled();
+  });
+
+  it("shows m3u playlists in the sidebar and switches the library to the selected playlist", async () => {
+    const resultWithPlaylist: TestScanResult = {
+      ...scanResult,
+      playlists: [
+        {
+          id: "playlist-90s",
+          name: "90后",
+          filePath: `${rememberedFolder}/playlists/90后.m3u`,
+          trackIds: [thirdTrack.id, track.id]
+        }
+      ]
+    };
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(resultWithPlaylist));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /90后/ }));
+    });
+
+    expect(screen.getByRole("heading", { name: "90后" })).toBeTruthy();
+    const library = screen.getByRole("region", { name: "音乐库浏览器" });
+    expect(within(library).getByRole("button", { name: "01 Third Song Second Artist Second Album 3:00" })).toBeTruthy();
+    expect(within(library).getByRole("button", { name: "02 Wave Song Artist Wave Album 3:00" })).toBeTruthy();
+    expect(within(library).queryByText("Second Song")).toBeNull();
+
+    const playlist = screen.getByRole("region", { name: "播放列表" });
+    expect(within(playlist).getByText("90后")).toBeTruthy();
+    expect(within(playlist).getByRole("button", { name: "01 Third Song Second Artist" })).toBeTruthy();
+    expect(within(playlist).getByRole("button", { name: "02 Wave Song Artist" })).toBeTruthy();
+  });
+
+  it("creates a new m3u playlist from the sidebar", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole("button", { name: "新建播放列表" }));
+    const dialog = screen.getByRole("dialog", { name: "新建播放列表" });
+    fireEvent.change(within(dialog).getByLabelText("名称"), { target: { value: "Road Trip" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "创建" }));
+
+    await waitFor(() => expect(window.musicApi.createPlaylist).toHaveBeenCalledWith(rememberedFolder, "Road Trip"));
+    expect(screen.getByRole("button", { name: /Road Trip/ })).toBeTruthy();
+    expect(screen.getByText("0 首歌曲")).toBeTruthy();
+  });
+
+  it("renames and deletes m3u playlists from the sidebar context menu", async () => {
+    const playlist = {
+      id: "playlist-90s",
+      name: "90后",
+      filePath: `${rememberedFolder}/playlists/90后.m3u`,
+      trackIds: [thirdTrack.id, track.id]
+    };
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify({ ...scanResult, playlists: [playlist] }));
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /90后/ })).toBeTruthy());
+    fireEvent.contextMenu(screen.getByRole("button", { name: /90后/ }), { clientX: 24, clientY: 48 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "重命名播放列表" }));
+    const dialog = screen.getByRole("dialog", { name: "重命名播放列表" });
+    fireEvent.change(within(dialog).getByLabelText("名称"), { target: { value: "青春" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "保存" }));
+
+    await waitFor(() => expect(window.musicApi.renamePlaylist).toHaveBeenCalledWith(rememberedFolder, playlist, "青春"));
+    expect(screen.queryByRole("button", { name: /90后/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /青春/ })).toBeTruthy();
+
+    fireEvent.contextMenu(screen.getByRole("button", { name: /青春/ }), { clientX: 24, clientY: 48 });
+    fireEvent.click(screen.getByRole("menuitem", { name: "删除播放列表" }));
+
+    await waitFor(() => expect(window.musicApi.deletePlaylist).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: /青春/ })).toBeNull();
+
+    confirmSpy.mockRestore();
+  });
+
+  it("removes a track from the active m3u playlist without removing it from the library", async () => {
+    const playlist = {
+      id: "playlist-90s",
+      name: "90后",
+      filePath: `${rememberedFolder}/playlists/90后.m3u`,
+      trackIds: [thirdTrack.id, track.id]
+    };
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify({ ...scanResult, playlists: [playlist] }));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /90后/ })).toBeTruthy());
+    fireEvent.click(screen.getByRole("button", { name: /90后/ }));
+    const library = screen.getByRole("region", { name: "音乐库浏览器" });
+    fireEvent.contextMenu(within(library).getByRole("button", { name: "01 Third Song Second Artist Second Album 3:00" }), {
+      clientX: 24,
+      clientY: 48
+    });
+    fireEvent.click(screen.getByRole("menuitem", { name: "从播放列表移除" }));
+
+    await waitFor(() =>
+      expect(window.musicApi.removeTrackFromPlaylist).toHaveBeenCalledWith(rememberedFolder, playlist, thirdTrack)
+    );
+    expect(within(library).queryByText("Third Song")).toBeNull();
+    expect(within(library).getByText("Wave Song")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "歌曲" }));
+    expect(within(screen.getByRole("region", { name: "音乐库浏览器" })).getByText("Third Song")).toBeTruthy();
+  });
+
+  it("adds a library track to an existing m3u playlist from the track context menu", async () => {
+    const playlist = {
+      id: "playlist-favorites",
+      name: "Favorites",
+      filePath: `${rememberedFolder}/playlists/Favorites.m3u`,
+      trackIds: []
+    };
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify({ ...scanResult, playlists: [playlist] }));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    fireEvent.contextMenu(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }), {
+      clientX: 24,
+      clientY: 48
+    });
+    fireEvent.click(screen.getByRole("menuitem", { name: "添加到播放列表" }));
+
+    const dialog = screen.getByRole("dialog", { name: "添加到播放列表" });
+    expect(within(dialog).getByText("Wave Song")).toBeTruthy();
+    fireEvent.click(within(dialog).getByRole("button", { name: /Favorites/ }));
+
+    await waitFor(() => expect(window.musicApi.addTrackToPlaylist).toHaveBeenCalledWith(rememberedFolder, playlist, track));
+    expect(screen.queryByRole("dialog", { name: "添加到播放列表" })).toBeNull();
+    expect(screen.getByRole("button", { name: /Favorites.*1 首歌曲/ })).toBeTruthy();
+  });
+
+  it("creates a playlist from the add-to-playlist dialog opened from the queue", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    const queue = screen.getByRole("region", { name: "播放列表" });
+    fireEvent.contextMenu(within(queue).getByRole("button", { name: "02 Artist Folder Song Second Artist" }), {
+      clientX: 24,
+      clientY: 48
+    });
+    fireEvent.click(screen.getByRole("menuitem", { name: "添加到播放列表" }));
+    const dialog = screen.getByRole("dialog", { name: "添加到播放列表" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "新建播放列表" }));
+    const nameDialog = screen.getByRole("dialog", { name: "新建播放列表" });
+    fireEvent.change(within(nameDialog).getByLabelText("名称"), { target: { value: "Queue Picks" } });
+    fireEvent.click(within(nameDialog).getByRole("button", { name: "创建" }));
+
+    await waitFor(() => expect(window.musicApi.createPlaylist).toHaveBeenCalledWith(rememberedFolder, "Queue Picks"));
+    await waitFor(() =>
+      expect(window.musicApi.addTrackToPlaylist).toHaveBeenCalledWith(
+        rememberedFolder,
+        {
+          id: "playlist-Queue Picks",
+          name: "Queue Picks",
+          filePath: `${rememberedFolder}/playlists/Queue Picks.m3u`,
+          trackIds: []
+        },
+        folderTrack
+      )
+    );
+    expect(screen.queryByRole("dialog", { name: "添加到播放列表" })).toBeNull();
+    expect(screen.getByRole("button", { name: /Queue Picks.*1 首歌曲/ })).toBeTruthy();
   });
 
   it("rescans cached libraries that still point to legacy temporary artwork files", async () => {
@@ -575,26 +799,64 @@ describe("App", () => {
     expect(within(screen.getByRole("contentinfo")).getByText("Second Song")).toBeTruthy();
   });
 
-  it("opens the track context menu without lyric deletion", async () => {
+  it("opens the track context menu without moving the current-track highlight", async () => {
     localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
 
     render(<App />);
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
-    const trackButton = screen.getByRole("button", { name: "02 Artist Folder Song Second Artist Loose Songs 3:00" });
-    expect(trackButton.className).not.toContain("active");
+    const playingTrackButton = screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" });
+    const targetTrackButton = screen.getByRole("button", { name: "02 Artist Folder Song Second Artist Loose Songs 3:00" });
+    await act(async () => {
+      fireEvent.click(playingTrackButton);
+    });
+
+    await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenCalledWith(track.filePath));
+    expect(playingTrackButton.className).toContain("active");
+    expect(targetTrackButton.className).not.toContain("active");
 
     await act(async () => {
-      fireEvent.contextMenu(trackButton, {
+      fireEvent.contextMenu(targetTrackButton, {
         clientX: 40,
         clientY: 80
       });
     });
 
-    expect(trackButton.className).toContain("context-menu-target");
+    expect(playingTrackButton.className).toContain("active");
+    expect(targetTrackButton.className).not.toContain("active");
+    expect(targetTrackButton.className).not.toContain("context-menu-target");
     expect(screen.getByRole("menu")).toBeTruthy();
     expect(screen.queryByRole("menuitem", { name: "删除当前歌词" })).toBeNull();
+  });
+
+  it("opens the same track context menu from playlist rows", async () => {
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    const playlist = screen.getByRole("region", { name: "播放列表" });
+    const queueTrackButton = within(playlist).getByRole("button", { name: "02 Artist Folder Song Second Artist" });
+
+    await act(async () => {
+      fireEvent.contextMenu(queueTrackButton, {
+        clientX: 60,
+        clientY: 120
+      });
+    });
+
+    expect(screen.getByRole("menu")).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "打开文件位置" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "编辑音乐信息" })).toBeTruthy();
+    expect(screen.getByRole("menuitem", { name: "移到废纸篓" })).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("menuitem", { name: "打开文件位置" }));
+    });
+
+    await waitFor(() => expect(window.musicApi.showTrackInFolder).toHaveBeenCalledWith(folderTrack.filePath));
   });
 
   it("saves edited metadata and updates visible track data", async () => {
@@ -622,7 +884,7 @@ describe("App", () => {
         trackNumber: 5
       })
     );
-    expect(screen.getAllByText("Edited Song").length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getAllByText("Edited Song").length).toBeGreaterThan(0));
     expect(screen.getAllByText("Edited Artist").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Edited Album").length).toBeGreaterThan(0);
   });
@@ -769,6 +1031,35 @@ describe("App", () => {
     await waitFor(() => expect(window.musicApi.trashTrackFiles).toHaveBeenCalledWith(track));
     expect(within(screen.getByRole("region", { name: "音乐库浏览器" })).queryByText("Wave Song")).toBeNull();
     expect(within(screen.getByRole("region", { name: "播放列表" })).queryByText("Wave Song")).toBeNull();
+
+    confirmSpy.mockRestore();
+  });
+
+  it("removes trashed tracks from saved m3u playlist counts", async () => {
+    const playlist = {
+      id: "playlist-favorites",
+      name: "Favorites",
+      filePath: `${rememberedFolder}/playlists/Favorites.m3u`,
+      trackIds: [track.id, secondTrack.id]
+    };
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify({ ...scanResult, playlists: [playlist] }));
+    const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: /Favorites.*2 首歌曲/ })).toBeTruthy());
+    fireEvent.contextMenu(screen.getByRole("button", { name: "01 Wave Song Artist Wave Album 3:00" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "移到废纸篓" }));
+
+    await waitFor(() => expect(window.musicApi.trashTrackFiles).toHaveBeenCalledWith(track));
+    expect(screen.queryByRole("button", { name: /Favorites.*2 首歌曲/ })).toBeNull();
+    expect(screen.getByRole("button", { name: /Favorites.*1 首歌曲/ })).toBeTruthy();
+    expect(window.musicApi.writeLibraryCache).toHaveBeenLastCalledWith({
+      ...scanResult,
+      tracks: [folderTrack, secondTrack, thirdTrack],
+      playlists: [{ ...playlist, trackIds: [secondTrack.id] }]
+    });
 
     confirmSpy.mockRestore();
   });

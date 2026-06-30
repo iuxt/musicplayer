@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Track } from "../../shared/types";
+import type { LibraryPlaylist, Track } from "../../shared/types";
 import { useAudioPlayer } from "./useAudioPlayer";
 
 const tracks: Track[] = [
@@ -40,6 +40,26 @@ beforeEach(() => {
     readLibraryCache: vi.fn(),
     writeLibraryCache: vi.fn(),
     clearLibraryCache: vi.fn(),
+    createPlaylist: vi.fn(async (_folderPath: string, name: string) => ({
+      ok: true as const,
+      playlist: { id: name, name, filePath: `/music/playlists/${name}.m3u`, trackIds: [] }
+    })),
+    renamePlaylist: vi.fn(async (_folderPath: string, playlist: LibraryPlaylist, name: string) => ({
+      ok: true as const,
+      playlist: { ...playlist, id: name, name, filePath: `/music/playlists/${name}.m3u` }
+    })),
+    deletePlaylist: vi.fn(async () => ({ ok: true as const })),
+    removeTrackFromPlaylist: vi.fn(async (_folderPath: string, playlist: LibraryPlaylist, track: Track) => ({
+      ok: true as const,
+      playlist: { ...playlist, trackIds: playlist.trackIds.filter((trackId) => trackId !== track.id) }
+    })),
+    addTrackToPlaylist: vi.fn(async (_folderPath: string, playlist: LibraryPlaylist, track: Track) => ({
+      ok: true as const,
+      playlist: {
+        ...playlist,
+        trackIds: playlist.trackIds.includes(track.id) ? playlist.trackIds : [...playlist.trackIds, track.id]
+      }
+    })),
     getPlayableUrl: vi.fn(async (filePath: string) => `file://${filePath}`),
     getArtworkUrl: vi.fn(),
     getLyrics: vi.fn(),

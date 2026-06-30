@@ -8,6 +8,7 @@ interface VirtualizedListProps<T> {
   getKey: (item: T, index: number) => string;
   emptyState?: ReactNode;
   overscan?: number;
+  scrollToIndex?: number | null;
   virtualizationThreshold?: number;
 }
 
@@ -23,6 +24,7 @@ export function VirtualizedList<T>({
   getKey,
   emptyState,
   overscan = defaultOverscan,
+  scrollToIndex = null,
   virtualizationThreshold = defaultVirtualizationThreshold
 }: VirtualizedListProps<T>) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -51,12 +53,37 @@ export function VirtualizedList<T>({
     updateRange();
   }, [updateRange]);
 
+  useLayoutEffect(() => {
+    if (scrollToIndex === null || scrollToIndex < 0 || items.length === 0) {
+      return;
+    }
+
+    const container = containerRef.current;
+    if (!container) {
+      return;
+    }
+
+    const viewportHeight = container.clientHeight || defaultViewportHeight;
+    container.scrollTop = scrollTopForIndex(scrollToIndex, items.length, estimatedRowHeight, viewportHeight);
+    if (shouldVirtualize) {
+      updateRange();
+    }
+  }, [estimatedRowHeight, items.length, scrollToIndex, shouldVirtualize, updateRange]);
+
   if (items.length === 0) {
-    return <div className={className}>{emptyState}</div>;
+    return (
+      <div className={className} ref={containerRef}>
+        {emptyState}
+      </div>
+    );
   }
 
   if (!shouldVirtualize) {
-    return <div className={className}>{items.map((item, index) => renderItemWithKey(item, index, getKey, renderItem))}</div>;
+    return (
+      <div className={className} ref={containerRef}>
+        {items.map((item, index) => renderItemWithKey(item, index, getKey, renderItem))}
+      </div>
+    );
   }
 
   const visibleItems = items.slice(range.start, range.end);
@@ -96,4 +123,11 @@ function visibleRangeFor(
     start: firstVisibleIndex,
     end: Math.min(itemCount, firstVisibleIndex + visibleCount)
   };
+}
+
+function scrollTopForIndex(index: number, itemCount: number, estimatedRowHeight: number, viewportHeight: number) {
+  const clampedIndex = Math.min(Math.max(index, 0), itemCount - 1);
+  const centeredTop = clampedIndex * estimatedRowHeight - viewportHeight / 2 + estimatedRowHeight / 2;
+  const maxScrollTop = Math.max(0, itemCount * estimatedRowHeight - viewportHeight);
+  return Math.min(Math.max(0, centeredTop), maxScrollTop);
 }
