@@ -123,8 +123,12 @@ export function App() {
   }, [search, tracks]);
 
   const visibleTracks = useMemo(() => {
+    if (activeCategory === "albums" || activeCategory === "artists") {
+      return tracks;
+    }
+
     return filteredTracks;
-  }, [filteredTracks]);
+  }, [activeCategory, filteredTracks, tracks]);
 
   const playlistTracks = useMemo(() => {
     if (isPlayQueueExplicit) {

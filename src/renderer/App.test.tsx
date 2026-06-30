@@ -435,6 +435,26 @@ describe("App", () => {
     expect(within(library).queryByText("Second Artist/Second Album")).toBeNull();
   });
 
+  it("filters album rows by album info without shrinking grouped album tracks", async () => {
+    const guestTrack = makeTrack("guest-1", "Guest Song", "Guest Artist", "Shared Album", "Shared Album");
+    const mainTrack = makeTrack("main-1", "Main Song", "Main Artist", "Shared Album", "Shared Album");
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify({ ...scanResult, tracks: [guestTrack, mainTrack] }));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Guest Song").length).toBeGreaterThan(0));
+    fireEvent.click(screen.getByRole("button", { name: "专辑" }));
+    expect(await screen.findByRole("heading", { name: "专辑" })).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText("搜索歌曲、歌手、专辑"), { target: { value: "Guest Artist" } });
+
+    const library = screen.getByRole("region", { name: "音乐库浏览器" });
+    expect(
+      within(library).getByRole("button", { name: /Shared Album.*Guest Artist, Main Artist.*2 首歌曲.*播放/ })
+    ).toBeTruthy();
+  });
+
   it("drills into folders one level at a time and shows current-layer songs", async () => {
     localStorage.setItem("musicplayer:last-folder", rememberedFolder);
 

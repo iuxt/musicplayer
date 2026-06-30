@@ -42,9 +42,13 @@ export const LibraryList = memo(function LibraryList({
   onTrackContextMenu
 }: LibraryListProps) {
   const isFolderDetail = category === "folders" && Boolean(selectedFolderPath);
+  const query = search.trim().toLowerCase();
   const groups = useMemo(
-    () => (category !== "songs" && category !== "folders" ? buildGroups(tracks, category) : []),
-    [category, tracks]
+    () =>
+      category !== "songs" && category !== "folders"
+        ? filterGroups(buildGroups(tracks, category), query)
+        : [],
+    [category, query, tracks]
   );
   const folderRows = useMemo(
     () => (category === "folders" ? buildFolderBrowserRows(tracks, selectedFolderPath) : []),
@@ -310,6 +314,19 @@ function buildGroups(tracks: Track[], category: Exclude<LibraryCategory, "songs"
       };
     })
     .sort((first, second) => first.label.localeCompare(second.label));
+}
+
+function filterGroups(
+  groups: Array<{ key: string; label: string; detail: string; tracks: Track[] }>,
+  query: string
+) {
+  if (!query) {
+    return groups;
+  }
+
+  return groups.filter((group) =>
+    [group.label, group.detail].some((value) => value.toLowerCase().includes(query))
+  );
 }
 
 function getGroupLabel(track: Track, category: Exclude<LibraryCategory, "songs" | "folders">) {
