@@ -679,6 +679,25 @@ describe("App", () => {
     ).toBeTruthy();
   });
 
+  it("filters songs by the real disk filename", async () => {
+    const taggedTrack = {
+      ...makeTrack("tagged-1", "Tagged Title", "Tagged Artist", "Tagged Album", "Tagged Album"),
+      filePath: "/Users/test/Music/Tagged Album/real-disk-name.flac",
+      extension: "flac" as const
+    };
+    localStorage.setItem("musicplayer:last-folder", rememberedFolder);
+    localStorage.setItem(libraryCacheKey, JSON.stringify({ ...scanResult, tracks: [taggedTrack, secondTrack] }));
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getAllByText("Tagged Title").length).toBeGreaterThan(0));
+    fireEvent.change(screen.getByPlaceholderText("搜索歌曲、歌手、专辑"), { target: { value: "real-disk-name" } });
+
+    const library = screen.getByRole("region", { name: "音乐库浏览器" });
+    expect(within(library).getByText("Tagged Title")).toBeTruthy();
+    expect(within(library).queryByText("Second Song")).toBeNull();
+  });
+
   it("drills into folders one level at a time and shows current-layer songs", async () => {
     localStorage.setItem("musicplayer:last-folder", rememberedFolder);
 

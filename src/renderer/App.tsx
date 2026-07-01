@@ -1511,7 +1511,11 @@ function filterTracks(tracks: Track[], query: string) {
     return tracks;
   }
 
-  return tracks.filter((track) => [track.title, track.artist, track.album].some((value) => value.toLowerCase().includes(query)));
+  return tracks.filter((track) =>
+    [track.title, track.artist, track.album, getFileNameForDisplay(track.filePath)].some((value) =>
+      value.toLowerCase().includes(query)
+    )
+  );
 }
 
 function isPlaybackStateForTracks(value: unknown, tracks: Track[]): value is PlaybackState {
