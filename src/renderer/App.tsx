@@ -274,6 +274,20 @@ export function App() {
     [commitAppSettings]
   );
 
+  const changeDesktopLyricsCurrentColor = useCallback(
+    (color: string) => {
+      commitAppSettings((currentSettings) => ({ ...currentSettings, desktopLyricsCurrentColor: color }));
+    },
+    [commitAppSettings]
+  );
+
+  const changeDesktopLyricsNextColor = useCallback(
+    (color: string) => {
+      commitAppSettings((currentSettings) => ({ ...currentSettings, desktopLyricsNextColor: color }));
+    },
+    [commitAppSettings]
+  );
+
   const changeVolume = useCallback(
     (volume: number) => {
       const nextVolume = player.setVolume(volume);
@@ -596,11 +610,15 @@ export function App() {
         isLyricsLoading,
         currentTime: player.currentTime,
         fontFamily: appSettings.desktopLyricsFontFamily,
-        fontSize: appSettings.desktopLyricsFontSize
+        fontSize: appSettings.desktopLyricsFontSize,
+        currentColor: appSettings.desktopLyricsCurrentColor,
+        nextColor: appSettings.desktopLyricsNextColor
       }),
     [
+      appSettings.desktopLyricsCurrentColor,
       appSettings.desktopLyricsFontFamily,
       appSettings.desktopLyricsFontSize,
+      appSettings.desktopLyricsNextColor,
       isLyricsLoading,
       lyrics,
       player.currentTime,
@@ -1177,6 +1195,8 @@ export function App() {
             desktopLyricsEnabled={appSettings.desktopLyricsEnabled}
             desktopLyricsFontFamily={appSettings.desktopLyricsFontFamily}
             desktopLyricsFontSize={appSettings.desktopLyricsFontSize}
+            desktopLyricsCurrentColor={appSettings.desktopLyricsCurrentColor}
+            desktopLyricsNextColor={appSettings.desktopLyricsNextColor}
             appVersion={__APP_VERSION__}
             cacheStatus={cacheStatus}
             cacheError={cacheError}
@@ -1190,6 +1210,8 @@ export function App() {
             onDesktopLyricsEnabledChange={changeDesktopLyricsEnabled}
             onDesktopLyricsFontFamilyChange={changeDesktopLyricsFontFamily}
             onDesktopLyricsFontSizeChange={changeDesktopLyricsFontSize}
+            onDesktopLyricsCurrentColorChange={changeDesktopLyricsCurrentColor}
+            onDesktopLyricsNextColorChange={changeDesktopLyricsNextColor}
           />
         ) : tracks.length === 0 ? (
           <EmptyState onChooseFolder={chooseFolder} isScanning={isScanning} />

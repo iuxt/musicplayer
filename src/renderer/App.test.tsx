@@ -1207,13 +1207,17 @@ describe("App", () => {
     await waitFor(() => expect(screen.getAllByRole("option", { name: "LXGW WenKai" }).length).toBeGreaterThan(0));
     fireEvent.change(screen.getByLabelText("桌面歌词字体"), { target: { value: "LXGW WenKai" } });
     fireEvent.change(screen.getByLabelText("桌面歌词字号"), { target: { value: "32" } });
+    fireEvent.change(screen.getByLabelText("当前歌词颜色"), { target: { value: "#ffcc00" } });
+    fireEvent.change(screen.getByLabelText("下一句颜色"), { target: { value: "#5eead4" } });
     fireEvent.click(screen.getByLabelText("显示桌面歌词"));
 
     expect(window.musicApi.showDesktopLyrics).toHaveBeenCalled();
     expect(JSON.parse(localStorage.getItem(appSettingsKey) ?? "{}")).toMatchObject({
       desktopLyricsEnabled: true,
       desktopLyricsFontFamily: "LXGW WenKai",
-      desktopLyricsFontSize: 32
+      desktopLyricsFontSize: 32,
+      desktopLyricsCurrentColor: "#FFCC00",
+      desktopLyricsNextColor: "#5EEAD4"
     });
 
     fireEvent.click(screen.getByRole("button", { name: "歌曲" }));
@@ -1229,7 +1233,9 @@ describe("App", () => {
           currentLine: "Desktop current",
           nextLine: "Desktop next",
           fontFamily: "LXGW WenKai",
-          fontSize: 32
+          fontSize: 32,
+          currentColor: "#FFCC00",
+          nextColor: "#5EEAD4"
         })
       )
     );
@@ -1427,6 +1433,8 @@ describe("App", () => {
       desktopLyricsEnabled: false,
       desktopLyricsFontFamily: "",
       desktopLyricsFontSize: 28,
+      desktopLyricsCurrentColor: "#FFFFFF",
+      desktopLyricsNextColor: "#9CA3AF",
       volume: 0.82,
       shuffle: false,
       repeat: "off"
@@ -1491,6 +1499,8 @@ function defaultStoredSettings() {
     desktopLyricsEnabled: false,
     desktopLyricsFontFamily: "",
     desktopLyricsFontSize: 28,
+    desktopLyricsCurrentColor: "#FFFFFF",
+    desktopLyricsNextColor: "#9CA3AF",
     volume: 0.82,
     shuffle: false,
     repeat: "off"
