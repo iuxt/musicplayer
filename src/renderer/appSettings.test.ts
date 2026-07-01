@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
   APP_SETTINGS_STORAGE_KEY,
   DEFAULT_APP_SETTINGS,
+  DEFAULT_DESKTOP_LYRICS_CURRENT_COLOR,
+  DEFAULT_DESKTOP_LYRICS_NEXT_COLOR,
   MAX_DESKTOP_LYRICS_FONT_SIZE,
   MAX_FULLSCREEN_LYRICS_FONT_SIZE,
   MIN_DESKTOP_LYRICS_FONT_SIZE,
@@ -115,6 +117,8 @@ describe("appSettings", () => {
       desktopLyricsEnabled: true,
       desktopLyricsFontFamily: "LXGW WenKai",
       desktopLyricsFontSize: MAX_DESKTOP_LYRICS_FONT_SIZE,
+      desktopLyricsCurrentColor: "#FFFFFF",
+      desktopLyricsNextColor: "#9CA3AF",
       volume: 0.82,
       shuffle: false,
       repeat: "off"
@@ -173,6 +177,94 @@ describe("appSettings", () => {
     });
 
     expect(readAppSettings(storage)).toEqual(DEFAULT_APP_SETTINGS);
+  });
+
+  it("fills missing desktop lyric colors with defaults for legacy settings", () => {
+    const storage = makeStorage({
+      [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
+        fullscreenLyricsFontFamily: "",
+        fullscreenLyricsFontSize: 36,
+        systemMediaShortcutsEnabled: false,
+        closeWindowStopsPlayback: false,
+        desktopLyricsEnabled: false,
+        desktopLyricsFontFamily: "",
+        desktopLyricsFontSize: 28,
+        volume: 0.82,
+        shuffle: false,
+        repeat: "off"
+      })
+    });
+
+    expect(readAppSettings(storage)).toEqual(DEFAULT_APP_SETTINGS);
+  });
+
+  it("reads and writes desktop lyric colors", () => {
+    const storage = makeStorage({
+      [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
+        ...DEFAULT_APP_SETTINGS,
+        desktopLyricsCurrentColor: "#ffcc00",
+        desktopLyricsNextColor: "#5eead4"
+      })
+    });
+
+    expect(readAppSettings(storage)).toEqual({
+      ...DEFAULT_APP_SETTINGS,
+      desktopLyricsCurrentColor: "#FFCC00",
+      desktopLyricsNextColor: "#5EEAD4"
+    });
+
+    writeAppSettings(
+      {
+        ...DEFAULT_APP_SETTINGS,
+        desktopLyricsCurrentColor: "#f472b6",
+        desktopLyricsNextColor: "#38bdf8"
+      },
+      storage
+    );
+
+    expect(storage.setItem).toHaveBeenCalledWith(
+      APP_SETTINGS_STORAGE_KEY,
+      JSON.stringify({
+        ...DEFAULT_APP_SETTINGS,
+        desktopLyricsCurrentColor: "#F472B6",
+        desktopLyricsNextColor: "#38BDF8"
+      })
+    );
+  });
+
+  it("returns defaults for invalid persisted desktop lyric colors", () => {
+    expect(
+      readAppSettings(
+        makeStorage({
+          [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
+            ...DEFAULT_APP_SETTINGS,
+            desktopLyricsCurrentColor: "white"
+          })
+        })
+      )
+    ).toEqual(DEFAULT_APP_SETTINGS);
+
+    expect(
+      readAppSettings(
+        makeStorage({
+          [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
+            ...DEFAULT_APP_SETTINGS,
+            desktopLyricsNextColor: "#FFF"
+          })
+        })
+      )
+    ).toEqual(DEFAULT_APP_SETTINGS);
+
+    expect(
+      readAppSettings(
+        makeStorage({
+          [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
+            ...DEFAULT_APP_SETTINGS,
+            desktopLyricsNextColor: null
+          })
+        })
+      )
+    ).toEqual(DEFAULT_APP_SETTINGS);
   });
 
   it("returns defaults for invalid persisted playback preferences", () => {
@@ -307,6 +399,8 @@ describe("appSettings", () => {
         desktopLyricsEnabled: true,
         desktopLyricsFontFamily: "  LXGW WenKai  ",
         desktopLyricsFontSize: MIN_DESKTOP_LYRICS_FONT_SIZE + 0.4,
+        desktopLyricsCurrentColor: "#ffffff",
+        desktopLyricsNextColor: "#9ca3af",
         volume: 0.82,
         shuffle: false,
         repeat: "off"
@@ -324,6 +418,8 @@ describe("appSettings", () => {
         desktopLyricsEnabled: true,
         desktopLyricsFontFamily: "LXGW WenKai",
         desktopLyricsFontSize: MIN_DESKTOP_LYRICS_FONT_SIZE,
+        desktopLyricsCurrentColor: DEFAULT_DESKTOP_LYRICS_CURRENT_COLOR,
+        desktopLyricsNextColor: DEFAULT_DESKTOP_LYRICS_NEXT_COLOR,
         volume: 0.82,
         shuffle: false,
         repeat: "off"
@@ -345,6 +441,8 @@ describe("appSettings", () => {
       desktopLyricsEnabled: false,
       desktopLyricsFontFamily: "",
       desktopLyricsFontSize: 28,
+      desktopLyricsCurrentColor: "#FFFFFF",
+      desktopLyricsNextColor: "#9CA3AF",
       volume: 0.82,
       shuffle: false,
       repeat: "off"

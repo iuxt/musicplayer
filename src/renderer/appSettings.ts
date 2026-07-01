@@ -3,6 +3,8 @@ export const MIN_FULLSCREEN_LYRICS_FONT_SIZE = 24;
 export const MAX_FULLSCREEN_LYRICS_FONT_SIZE = 56;
 export const MIN_DESKTOP_LYRICS_FONT_SIZE = 18;
 export const MAX_DESKTOP_LYRICS_FONT_SIZE = 44;
+export const DEFAULT_DESKTOP_LYRICS_CURRENT_COLOR = "#FFFFFF";
+export const DEFAULT_DESKTOP_LYRICS_NEXT_COLOR = "#9CA3AF";
 export const DEFAULT_VOLUME = 0.82;
 
 export type RepeatMode = "off" | "all" | "one";
@@ -15,6 +17,8 @@ export interface AppSettings {
   desktopLyricsEnabled: boolean;
   desktopLyricsFontFamily: string;
   desktopLyricsFontSize: number;
+  desktopLyricsCurrentColor: string;
+  desktopLyricsNextColor: string;
   volume: number;
   shuffle: boolean;
   repeat: RepeatMode;
@@ -28,6 +32,8 @@ export const DEFAULT_APP_SETTINGS: AppSettings = {
   desktopLyricsEnabled: false,
   desktopLyricsFontFamily: "",
   desktopLyricsFontSize: 28,
+  desktopLyricsCurrentColor: DEFAULT_DESKTOP_LYRICS_CURRENT_COLOR,
+  desktopLyricsNextColor: DEFAULT_DESKTOP_LYRICS_NEXT_COLOR,
   volume: DEFAULT_VOLUME,
   shuffle: false,
   repeat: "off"
@@ -90,6 +96,12 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     "desktopLyricsFontFamily",
     DEFAULT_APP_SETTINGS.desktopLyricsFontFamily
   );
+  const desktopLyricsCurrentColor = normalizeHexColor(
+    getValueOrDefault(value, "desktopLyricsCurrentColor", DEFAULT_APP_SETTINGS.desktopLyricsCurrentColor)
+  );
+  const desktopLyricsNextColor = normalizeHexColor(
+    getValueOrDefault(value, "desktopLyricsNextColor", DEFAULT_APP_SETTINGS.desktopLyricsNextColor)
+  );
   const desktopLyricsEnabled = getValueOrDefault(
     value,
     "desktopLyricsEnabled",
@@ -112,6 +124,8 @@ export function normalizeAppSettings(value: unknown): AppSettings {
   if (
     typeof fullscreenFontFamily !== "string" ||
     typeof desktopFontFamily !== "string" ||
+    desktopLyricsCurrentColor === null ||
+    desktopLyricsNextColor === null ||
     typeof desktopLyricsEnabled !== "boolean" ||
     typeof systemMediaShortcutsEnabled !== "boolean" ||
     typeof closeWindowStopsPlayback !== "boolean" ||
@@ -130,6 +144,8 @@ export function normalizeAppSettings(value: unknown): AppSettings {
     desktopLyricsEnabled,
     desktopLyricsFontFamily: desktopFontFamily.trim(),
     desktopLyricsFontSize: desktopFontSize,
+    desktopLyricsCurrentColor,
+    desktopLyricsNextColor,
     volume,
     shuffle,
     repeat
@@ -142,6 +158,14 @@ function normalizeFontSize(value: unknown, min: number, max: number) {
   }
 
   return Math.round(value);
+}
+
+function normalizeHexColor(value: unknown) {
+  if (typeof value !== "string" || !/^#[0-9a-fA-F]{6}$/.test(value)) {
+    return null;
+  }
+
+  return value.toUpperCase();
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
