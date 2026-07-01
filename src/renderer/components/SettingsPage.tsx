@@ -1,4 +1,5 @@
 import { FolderOpen, RefreshCw, Trash2 } from "lucide-react";
+import { type CSSProperties } from "react";
 import {
   MAX_DESKTOP_LYRICS_FONT_SIZE,
   MAX_FULLSCREEN_LYRICS_FONT_SIZE,
@@ -17,6 +18,8 @@ interface SettingsPageProps {
   desktopLyricsEnabled: boolean;
   desktopLyricsFontFamily: string;
   desktopLyricsFontSize: number;
+  desktopLyricsCurrentColor: string;
+  desktopLyricsNextColor: string;
   appVersion: string;
   cacheStatus: string | null;
   cacheError: string | null;
@@ -30,6 +33,8 @@ interface SettingsPageProps {
   onDesktopLyricsEnabledChange: (enabled: boolean) => void;
   onDesktopLyricsFontFamilyChange: (fontFamily: string) => void;
   onDesktopLyricsFontSizeChange: (fontSize: number) => void;
+  onDesktopLyricsCurrentColorChange: (color: string) => void;
+  onDesktopLyricsNextColorChange: (color: string) => void;
 }
 
 export function SettingsPage({
@@ -43,6 +48,8 @@ export function SettingsPage({
   desktopLyricsEnabled,
   desktopLyricsFontFamily,
   desktopLyricsFontSize,
+  desktopLyricsCurrentColor,
+  desktopLyricsNextColor,
   appVersion,
   cacheStatus,
   cacheError,
@@ -55,7 +62,9 @@ export function SettingsPage({
   onCloseWindowStopsPlaybackChange,
   onDesktopLyricsEnabledChange,
   onDesktopLyricsFontFamilyChange,
-  onDesktopLyricsFontSizeChange
+  onDesktopLyricsFontSizeChange,
+  onDesktopLyricsCurrentColorChange,
+  onDesktopLyricsNextColorChange
 }: SettingsPageProps) {
   return (
     <section className="settings-page" aria-label="设置">
@@ -200,9 +209,46 @@ export function SettingsPage({
               ))}
             </select>
           </label>
+          <div className="lyrics-color-controls">
+            <label className="lyrics-color-control">
+              <span>当前歌词颜色</span>
+              <span className="lyrics-color-picker">
+                <input
+                  aria-label="当前歌词颜色"
+                  onChange={(event) => onDesktopLyricsCurrentColorChange(event.target.value)}
+                  type="color"
+                  value={desktopLyricsCurrentColor}
+                />
+                <code>{desktopLyricsCurrentColor}</code>
+              </span>
+            </label>
+            <label className="lyrics-color-control">
+              <span>下一句颜色</span>
+              <span className="lyrics-color-picker">
+                <input
+                  aria-label="下一句颜色"
+                  onChange={(event) => onDesktopLyricsNextColorChange(event.target.value)}
+                  type="color"
+                  value={desktopLyricsNextColor}
+                />
+                <code>{desktopLyricsNextColor}</code>
+              </span>
+            </label>
+          </div>
           <div
             className="desktop-lyrics-preview"
-            style={{ fontFamily: desktopLyricsFontFamily || undefined, fontSize: `${desktopLyricsFontSize}px` }}
+            style={
+              {
+                fontFamily: desktopLyricsFontFamily || undefined,
+                fontSize: `${desktopLyricsFontSize}px`,
+                "--desktop-lyrics-preview-current-color": desktopLyricsCurrentColor,
+                "--desktop-lyrics-preview-next-color": desktopLyricsNextColor
+              } as CSSProperties &
+                Record<
+                  "--desktop-lyrics-preview-current-color" | "--desktop-lyrics-preview-next-color",
+                  string
+                >
+            }
           >
             <p>桌面歌词预览行</p>
             <span>下一句歌词预览</span>

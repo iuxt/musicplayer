@@ -89,6 +89,38 @@ describe("SettingsPage", () => {
     expect(props.onDesktopLyricsFontSizeChange).toHaveBeenCalledWith(32);
   });
 
+  it("changes desktop lyrics color settings", () => {
+    const props = makeProps({
+      desktopLyricsCurrentColor: "#FFCC00",
+      desktopLyricsNextColor: "#5EEAD4"
+    });
+
+    render(<SettingsPage {...props} />);
+    fireEvent.change(screen.getByLabelText("当前歌词颜色"), { target: { value: "#f472b6" } });
+    fireEvent.change(screen.getByLabelText("下一句颜色"), { target: { value: "#38bdf8" } });
+
+    expect(props.onDesktopLyricsCurrentColorChange).toHaveBeenCalledWith("#f472b6");
+    expect(props.onDesktopLyricsNextColorChange).toHaveBeenCalledWith("#38bdf8");
+    expect(screen.getByText("#FFCC00")).toBeTruthy();
+    expect(screen.getByText("#5EEAD4")).toBeTruthy();
+  });
+
+  it("previews desktop lyric colors", () => {
+    render(
+      <SettingsPage
+        {...makeProps({
+          desktopLyricsCurrentColor: "#FFCC00",
+          desktopLyricsNextColor: "#5EEAD4"
+        })}
+      />
+    );
+
+    const preview = screen.getByText("桌面歌词预览行").closest(".desktop-lyrics-preview") as HTMLElement;
+
+    expect(preview.style.getPropertyValue("--desktop-lyrics-preview-current-color")).toBe("#FFCC00");
+    expect(preview.style.getPropertyValue("--desktop-lyrics-preview-next-color")).toBe("#5EEAD4");
+  });
+
   it("changes playback system media shortcut settings", () => {
     const props = makeProps({ systemMediaShortcutsEnabled: false });
 
@@ -120,6 +152,8 @@ function makeProps(overrides: Partial<Parameters<typeof SettingsPage>[0]> = {}):
     desktopLyricsEnabled: false,
     desktopLyricsFontFamily: "",
     desktopLyricsFontSize: 28,
+    desktopLyricsCurrentColor: "#FFFFFF",
+    desktopLyricsNextColor: "#9CA3AF",
     appVersion: "unknown",
     cacheStatus: null,
     cacheError: null,
@@ -133,6 +167,8 @@ function makeProps(overrides: Partial<Parameters<typeof SettingsPage>[0]> = {}):
     onDesktopLyricsEnabledChange: vi.fn(),
     onDesktopLyricsFontFamilyChange: vi.fn(),
     onDesktopLyricsFontSizeChange: vi.fn(),
+    onDesktopLyricsCurrentColorChange: vi.fn(),
+    onDesktopLyricsNextColorChange: vi.fn(),
     ...overrides
   };
 }
