@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { readLibraryPlaylists } from "./playlists.js";
@@ -9,10 +9,17 @@ const supportedExtensions = new Set<SupportedAudioExtension>(["mp3", "m4a", "aac
 const supportedArtworkExtensions = new Set(["jpg", "jpeg", "png", "webp"]);
 const preferredArtworkNames = ["cover", "folder", "front"];
 const progressTrackInterval = 16;
+const defaultMaxEmbeddedArtworkBytes = 8 * 1024 * 1024;
 
 interface ScanOptions {
   onProgress?: (progress: ScanProgress) => void;
   artworkCacheDir?: string;
+  maxEmbeddedArtworkBytes?: number;
+}
+
+interface EmbeddedArtworkOptions {
+  cacheDir?: string;
+  maxBytes?: number;
 }
 
 export async function scanMusicFolder(folderPath: string, options: ScanOptions = {}): Promise<ScanResult> {
@@ -52,7 +59,14 @@ export async function scanMusicFolder(folderPath: string, options: ScanOptions =
         continue;
       }
 
-      const track = await buildTrack(entryPath, folderPath, extension, siblingFileNames, options.artworkCacheDir);
+      const track = await buildTrack(
+        entryPath,
+        folderPath,
+        extension,
+        siblingFileNames,
+        options.artworkCacheDir,
+        options.maxEmbeddedArtworkBytes
+      );
       tracks.push(track);
       report(currentFolder);
     }
@@ -85,6 +99,12 @@ export async function scanMusicFolder(folderPath: string, options: ScanOptions =
 
   await walk(folderPath);
   const playlists = await readLibraryPlaylists(folderPath, tracks, warnings);
+  if (options.artworkCacheDir) {
+    await cleanupArtworkCache(
+      options.artworkCacheDir,
+      new Set(tracks.map((track) => track.artworkPath).filter((value): value is string => Boolean(value)))
+    );
+  }
   report(folderPath, true);
 
   return {
@@ -107,7 +127,8 @@ async function buildTrack(
   rootFolderPath: string,
   extension: SupportedAudioExtension,
   siblingFileNames: string[],
-  artworkCacheDir?: string
+  artworkCacheDir?: string,
+  maxEmbeddedArtworkBytes = defaultMaxEmbeddedArtworkBytes
 ): Promise<Track> {
   const fallbackTitle = path.basename(filePath, path.extname(filePath));
   let title = fallbackTitle;
@@ -127,7 +148,10 @@ async function buildTrack(
     duration = Number.isFinite(metadata.format.duration) ? metadata.format.duration ?? 0 : 0;
     trackNumber = metadata.common.track.no ?? null;
     if (metadata.common.picture?.[0]) {
-      artworkPath = await writeEmbeddedArtwork(filePath, metadata.common.picture[0], artworkCacheDir);
+      artworkPath = await writeEmbeddedArtwork(filePath, metadata.common.picture[0], {
+        cacheDir: artworkCacheDir,
+        maxBytes: maxEmbeddedArtworkBytes
+      });
     }
     artworkId = artworkPath ? stableId(`${filePath}:artwork`) : null;
   } catch {
@@ -206,8 +230,15 @@ async function parseAudioFile(filePath: string) {
 export async function writeEmbeddedArtwork(
   trackPath: string,
   picture: { format: string; data: Uint8Array },
-  cacheDir = path.join(os.tmpdir(), "musicplayer-artwork")
-): Promise<string> {
+  options: string | EmbeddedArtworkOptions = {}
+): Promise<string | null> {
+  const cacheDir = typeof options === "string" ? options : options.cacheDir ?? path.join(os.tmpdir(), "musicplayer-artwork");
+  const maxBytes =
+    typeof options === "string" ? defaultMaxEmbeddedArtworkBytes : options.maxBytes ?? defaultMaxEmbeddedArtworkBytes;
+  if (picture.data.byteLength > maxBytes) {
+    return null;
+  }
+
   await mkdir(cacheDir, { recursive: true });
   const extension = artworkExtensionForFormat(picture.format);
   const artworkPath = path.join(cacheDir, `${stableId(trackPath)}.${extension}`);
@@ -222,10 +253,34 @@ export async function writeEmbeddedArtwork(
 
 async function hasSameFileContents(filePath: string, expectedContents: Buffer) {
   try {
-    return (await readFile(filePath)).equals(expectedContents);
+    const currentStats = await stat(filePath);
+    return currentStats.size === expectedContents.byteLength && (await readFile(filePath)).equals(expectedContents);
   } catch {
     return false;
   }
+}
+
+export async function cleanupArtworkCache(cacheDir: string, retainedArtworkPaths: Set<string>): Promise<void> {
+  let entries;
+  try {
+    entries = await readdir(cacheDir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+
+  const retainedPaths = new Set([...retainedArtworkPaths].map((filePath) => path.resolve(filePath)));
+  await Promise.all(
+    entries
+      .filter(
+        (entry) => entry.isFile() && supportedArtworkExtensions.has(path.extname(entry.name).slice(1).toLowerCase())
+      )
+      .map(async (entry) => {
+        const artworkPath = path.join(cacheDir, entry.name);
+        if (!retainedPaths.has(path.resolve(artworkPath))) {
+          await rm(artworkPath, { force: true });
+        }
+      })
+  );
 }
 
 function artworkExtensionForFormat(format: string): "jpg" | "png" | "webp" {

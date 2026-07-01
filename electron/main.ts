@@ -14,6 +14,7 @@ import {
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { readLyricsFile, toExistingOptionalFileUrl, toMediaFileUrl } from "../src/main/fileUrls.js";
+import { assertPathInsideAnyRoot, assertPathInsideRoot, getTrustedDevServerUrl } from "../src/main/security.js";
 import {
   clampDesktopLyricsPosition,
   readDesktopLyricsPosition,
@@ -40,6 +41,7 @@ const appDisplayName = "音乐播放器";
 let mainWindow: BrowserWindow | null = null;
 let desktopLyricsWindow: BrowserWindow | null = null;
 let latestDesktopLyricsPayload: DesktopLyricsPayload | null = null;
+let currentLibraryRootPath: string | null = null;
 let isQuitting = false;
 let closeWindowStopsPlayback = false;
 const maxDesktopLyricsWidth = 960;
@@ -145,7 +147,7 @@ async function ensureSystemMediaShortcutsPermission(): Promise<SystemMediaShortc
 }
 
 function getRendererUrl(windowMode?: "desktop-lyrics") {
-  const devServerUrl = process.env.VITE_DEV_SERVER_URL;
+  const devServerUrl = getTrustedDevServerUrl(process.env.VITE_DEV_SERVER_URL, !app.isPackaged);
   if (!devServerUrl) {
     return null;
   }
@@ -167,6 +169,48 @@ async function loadRendererWindow(win: BrowserWindow, windowMode?: "desktop-lyri
   const filePath = path.join(__dirname, "../../dist/index.html");
   const query = windowMode === "desktop-lyrics" ? { window: "desktop-lyrics" } : undefined;
   await win.loadFile(filePath, query ? { query } : undefined);
+}
+
+function setCurrentLibraryRootPath(folderPath: string) {
+  currentLibraryRootPath = path.resolve(folderPath);
+  return currentLibraryRootPath;
+}
+
+function setInitialOrAssertCurrentLibraryRootPath(folderPath: string) {
+  const resolvedFolderPath = path.resolve(folderPath);
+  if (!currentLibraryRootPath) {
+    currentLibraryRootPath = resolvedFolderPath;
+    return resolvedFolderPath;
+  }
+  return assertCurrentLibraryRoot(folderPath);
+}
+
+function assertCurrentLibraryPath(filePath: string | null | undefined) {
+  return assertPathInsideRoot(filePath, currentLibraryRootPath);
+}
+
+function assertCurrentLibraryArtworkPath(filePath: string | null | undefined) {
+  return assertPathInsideAnyRoot(
+    filePath,
+    [currentLibraryRootPath, getArtworkCacheDir()].filter((value): value is string => Boolean(value))
+  );
+}
+
+function assertCurrentLibraryRoot(folderPath: string) {
+  const resolvedFolderPath = path.resolve(folderPath);
+  if (currentLibraryRootPath && resolvedFolderPath !== currentLibraryRootPath) {
+    throw new Error("文件夹不是当前音乐库。");
+  }
+  return resolvedFolderPath;
+}
+
+function assertCurrentLibraryTrack(track: Track) {
+  return {
+    ...track,
+    filePath: assertCurrentLibraryPath(track.filePath),
+    artworkPath: track.artworkPath ? assertCurrentLibraryArtworkPath(track.artworkPath) : track.artworkPath,
+    lyricsPath: track.lyricsPath ? assertCurrentLibraryPath(track.lyricsPath) : track.lyricsPath
+  };
 }
 
 async function showDesktopLyricsWindow() {
@@ -355,7 +399,7 @@ function registerIpc() {
       return null;
     }
 
-    const folderPath = result.filePaths[0];
+    const folderPath = setCurrentLibraryRootPath(result.filePaths[0]);
     return scanMusicFolder(folderPath, {
       artworkCacheDir: getArtworkCacheDir(),
       onProgress: (progress) => event.sender.send("library:scan-progress", progress)
@@ -363,7 +407,8 @@ function registerIpc() {
   });
 
   ipcMain.handle("library:rescan", async (event, folderPath: string) => {
-    return scanMusicFolder(folderPath, {
+    const libraryRootPath = setInitialOrAssertCurrentLibraryRootPath(folderPath);
+    return scanMusicFolder(libraryRootPath, {
       artworkCacheDir: getArtworkCacheDir(),
       onProgress: (progress) => event.sender.send("library:scan-progress", progress)
     });
@@ -382,52 +427,56 @@ function registerIpc() {
   });
 
   ipcMain.handle("library:create-playlist", (_event, folderPath: string, name: string) => {
-    return toPlaylistMutationResult(() => createM3uPlaylistFile(folderPath, name));
+    return toPlaylistMutationResult(() => createM3uPlaylistFile(assertCurrentLibraryRoot(folderPath), name));
   });
 
   ipcMain.handle("library:rename-playlist", (_event, folderPath: string, playlist: LibraryPlaylist, name: string) => {
-    return toPlaylistMutationResult(() => renameM3uPlaylistFile(folderPath, playlist, name));
+    return toPlaylistMutationResult(() => renameM3uPlaylistFile(assertCurrentLibraryRoot(folderPath), playlist, name));
   });
 
   ipcMain.handle("library:delete-playlist", (_event, folderPath: string, playlist: LibraryPlaylist) => {
-    return toMediaActionResult(() => deleteM3uPlaylistFile(folderPath, playlist, trashFile));
+    return toMediaActionResult(() => deleteM3uPlaylistFile(assertCurrentLibraryRoot(folderPath), playlist, trashFile));
   });
 
   ipcMain.handle("library:remove-track-from-playlist", (_event, folderPath: string, playlist: LibraryPlaylist, track: Track) => {
-    return toPlaylistMutationResult(() => removeTrackFromM3uPlaylistFile(folderPath, playlist, track));
+    return toPlaylistMutationResult(() =>
+      removeTrackFromM3uPlaylistFile(assertCurrentLibraryRoot(folderPath), playlist, assertCurrentLibraryTrack(track))
+    );
   });
 
   ipcMain.handle("library:add-track-to-playlist", (_event, folderPath: string, playlist: LibraryPlaylist, track: Track) => {
-    return toPlaylistMutationResult(() => addTrackToM3uPlaylistFile(folderPath, playlist, track));
+    return toPlaylistMutationResult(() =>
+      addTrackToM3uPlaylistFile(assertCurrentLibraryRoot(folderPath), playlist, assertCurrentLibraryTrack(track))
+    );
   });
 
   ipcMain.handle("media:get-playable-url", (_event, filePath: string) => {
-    return toMediaFileUrl(filePath);
+    return toMediaFileUrl(assertCurrentLibraryPath(filePath));
   });
 
   ipcMain.handle("media:get-artwork-url", (_event, filePath: string | null) => {
-    return toExistingOptionalFileUrl(filePath);
+    return toExistingOptionalFileUrl(filePath ? assertCurrentLibraryArtworkPath(filePath) : null);
   });
 
   ipcMain.handle("media:get-lyrics", (_event, filePath: string | null) => {
-    return readLyricsFile(filePath);
+    return readLyricsFile(filePath ? assertCurrentLibraryPath(filePath) : null);
   });
 
   ipcMain.handle("media:show-track-in-folder", (_event, filePath: string) => {
-    shell.showItemInFolder(filePath);
+    shell.showItemInFolder(assertCurrentLibraryPath(filePath));
     return { ok: true };
   });
 
   ipcMain.handle("media:update-track-metadata", (_event, filePath: string, metadata: TrackMetadataUpdate) => {
-    return writeTrackMetadata(filePath, metadata);
+    return writeTrackMetadata(assertCurrentLibraryPath(filePath), metadata);
   });
 
   ipcMain.handle("media:trash-track-lyrics", (_event, track: Track) => {
-    return trashTrackLyrics(track, trashFile);
+    return trashTrackLyrics(assertCurrentLibraryTrack(track), trashFile);
   });
 
   ipcMain.handle("media:trash-track-files", (_event, track: Track) => {
-    return trashTrackFiles(track, trashFile);
+    return trashTrackFiles(assertCurrentLibraryTrack(track), trashFile);
   });
 
   ipcMain.handle("fonts:list-system", () => {

@@ -1,8 +1,8 @@
-import { mkdtemp, mkdir, readFile, stat, utimes, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, readdir, stat, utimes, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { scanMusicFolder, writeEmbeddedArtwork } from "./scanner.js";
+import { cleanupArtworkCache, scanMusicFolder, writeEmbeddedArtwork } from "./scanner.js";
 
 describe("scanMusicFolder", () => {
   it("finds supported audio files recursively and ignores unsupported files", async () => {
@@ -128,8 +128,9 @@ describe("scanMusicFolder", () => {
       data: new Uint8Array([1, 2, 3])
     });
 
-    expect(artworkPath).toMatch(/\.jpg$/);
-    await expect(readFile(artworkPath)).resolves.toEqual(Buffer.from([1, 2, 3]));
+    expect(artworkPath).not.toBeNull();
+    expect(artworkPath!).toMatch(/\.jpg$/);
+    await expect(readFile(artworkPath!)).resolves.toEqual(Buffer.from([1, 2, 3]));
   });
 
   it("writes embedded artwork into a configured cache directory", async () => {
@@ -145,9 +146,10 @@ describe("scanMusicFolder", () => {
       artworkCacheDir
     );
 
-    expect(path.dirname(artworkPath)).toBe(artworkCacheDir);
-    expect(artworkPath).toMatch(/\.png$/);
-    await expect(readFile(artworkPath)).resolves.toEqual(Buffer.from([4, 5, 6]));
+    expect(artworkPath).not.toBeNull();
+    expect(path.dirname(artworkPath!)).toBe(artworkCacheDir);
+    expect(artworkPath!).toMatch(/\.png$/);
+    await expect(readFile(artworkPath!)).resolves.toEqual(Buffer.from([4, 5, 6]));
   });
 
   it("does not rewrite unchanged embedded artwork cache files", async () => {
@@ -161,8 +163,9 @@ describe("scanMusicFolder", () => {
       },
       artworkCacheDir
     );
+    expect(artworkPath).not.toBeNull();
     const oldTimestamp = new Date("2024-01-01T00:00:00.000Z");
-    await utimes(artworkPath, oldTimestamp, oldTimestamp);
+    await utimes(artworkPath!, oldTimestamp, oldTimestamp);
 
     await writeEmbeddedArtwork(
       trackPath,
@@ -173,6 +176,36 @@ describe("scanMusicFolder", () => {
       artworkCacheDir
     );
 
-    expect((await stat(artworkPath)).mtime.getTime()).toBe(oldTimestamp.getTime());
+    expect((await stat(artworkPath!)).mtime.getTime()).toBe(oldTimestamp.getTime());
+  });
+
+  it("skips embedded artwork that exceeds the configured size limit", async () => {
+    const trackPath = path.join(await mkdtemp(path.join(os.tmpdir(), "embedded-art-large-")), "song.mp3");
+    const artworkCacheDir = await mkdtemp(path.join(os.tmpdir(), "musicplayer-artwork-large-"));
+
+    const artworkPath = await writeEmbeddedArtwork(
+      trackPath,
+      {
+        format: "image/jpeg",
+        data: new Uint8Array([1, 2, 3, 4])
+      },
+      { cacheDir: artworkCacheDir, maxBytes: 3 }
+    );
+
+    expect(artworkPath).toBeNull();
+    expect(await readdir(artworkCacheDir)).toEqual([]);
+  });
+
+  it("removes stale embedded artwork cache files after a scan", async () => {
+    const artworkCacheDir = await mkdtemp(path.join(os.tmpdir(), "musicplayer-artwork-clean-"));
+    const currentArtworkPath = path.join(artworkCacheDir, "current.jpg");
+    const staleArtworkPath = path.join(artworkCacheDir, "stale.jpg");
+    await writeFile(currentArtworkPath, "current");
+    await writeFile(staleArtworkPath, "stale");
+
+    await cleanupArtworkCache(artworkCacheDir, new Set([currentArtworkPath]));
+
+    await expect(readFile(currentArtworkPath, "utf8")).resolves.toBe("current");
+    await expect(readFile(staleArtworkPath, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
   });
 });
