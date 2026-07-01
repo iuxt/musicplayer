@@ -251,6 +251,8 @@ describe("appSettings", () => {
         makeStorage({
           [APP_SETTINGS_STORAGE_KEY]: JSON.stringify({
             ...DEFAULT_APP_SETTINGS,
+            desktopLyricsEnabled: true,
+            volume: 0.42,
             desktopLyricsNextColor: "#FFF"
           })
         })
