@@ -13,6 +13,8 @@ interface DesktopLyricsPayloadInput {
   currentTime: number;
   fontFamily: string;
   fontSize: number;
+  currentColor: string;
+  nextColor: string;
 }
 
 export function parseLyrics(lyrics: string | null): LyricLine[] {
@@ -78,7 +80,9 @@ export function buildDesktopLyricsPayload({
   isLyricsLoading,
   currentTime,
   fontFamily,
-  fontSize
+  fontSize,
+  currentColor,
+  nextColor
 }: DesktopLyricsPayloadInput): DesktopLyricsPayload {
   if (!track) {
     return {
@@ -88,7 +92,9 @@ export function buildDesktopLyricsPayload({
       nextLine: null,
       isLoading: false,
       fontFamily,
-      fontSize
+      fontSize,
+      currentColor,
+      nextColor
     };
   }
 
@@ -100,7 +106,9 @@ export function buildDesktopLyricsPayload({
       nextLine: null,
       isLoading: true,
       fontFamily,
-      fontSize
+      fontSize,
+      currentColor,
+      nextColor
     };
   }
 
@@ -113,7 +121,9 @@ export function buildDesktopLyricsPayload({
       nextLine: null,
       isLoading: false,
       fontFamily,
-      fontSize
+      fontSize,
+      currentColor,
+      nextColor
     };
   }
 
@@ -127,6 +137,8 @@ export function buildDesktopLyricsPayload({
     nextLine: nextLine?.text ?? null,
     isLoading: false,
     fontFamily,
-    fontSize
+    fontSize,
+    currentColor,
+    nextColor
   };
 }

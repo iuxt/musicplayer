@@ -83,4 +83,6 @@ export interface DesktopLyricsPayload {
   isLoading: boolean;
   fontFamily: string;
   fontSize: number;
+  currentColor: string;
+  nextColor: string;
 }

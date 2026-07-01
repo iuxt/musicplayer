@@ -12,8 +12,17 @@ export function DesktopLyrics({ payload, onContentBoundsChange }: DesktopLyricsP
     "--desktop-lyrics-font-family": payload.fontFamily
       ? `"${payload.fontFamily}", ui-sans-serif, system-ui, sans-serif`
       : "ui-sans-serif, system-ui, sans-serif",
-    "--desktop-lyrics-font-size": `${payload.fontSize}px`
-  } as CSSProperties & Record<"--desktop-lyrics-font-family" | "--desktop-lyrics-font-size", string>;
+    "--desktop-lyrics-font-size": `${payload.fontSize}px`,
+    "--desktop-lyrics-current-color": payload.currentColor,
+    "--desktop-lyrics-next-color": payload.nextColor
+  } as CSSProperties &
+    Record<
+      | "--desktop-lyrics-font-family"
+      | "--desktop-lyrics-font-size"
+      | "--desktop-lyrics-current-color"
+      | "--desktop-lyrics-next-color",
+      string
+    >;
 
   useLayoutEffect(() => {
     const surface = surfaceRef.current;
@@ -43,9 +52,11 @@ export function DesktopLyrics({ payload, onContentBoundsChange }: DesktopLyricsP
   }, [
     onContentBoundsChange,
     payload.currentLine,
+    payload.currentColor,
     payload.fontFamily,
     payload.fontSize,
     payload.isLoading,
+    payload.nextColor,
     payload.nextLine
   ]);
 

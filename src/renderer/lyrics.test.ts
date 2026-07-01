@@ -26,7 +26,9 @@ describe("lyrics helpers", () => {
         isLyricsLoading: false,
         currentTime: 13,
         fontFamily: "PingFang SC",
-        fontSize: 30
+        fontSize: 30,
+        currentColor: "#FFCC00",
+        nextColor: "#5EEAD4"
       })
     ).toEqual({
       trackTitle: "Song",
@@ -35,7 +37,9 @@ describe("lyrics helpers", () => {
       nextLine: "Later",
       isLoading: false,
       fontFamily: "PingFang SC",
-      fontSize: 30
+      fontSize: 30,
+      currentColor: "#FFCC00",
+      nextColor: "#5EEAD4"
     });
   });
 
@@ -47,9 +51,16 @@ describe("lyrics helpers", () => {
         isLyricsLoading: true,
         currentTime: 0,
         fontFamily: "",
-        fontSize: 28
-      }).currentLine
-    ).toBe("正在加载歌词...");
+        fontSize: 28,
+        currentColor: "#FFFFFF",
+        nextColor: "#9CA3AF"
+      })
+    ).toMatchObject({
+      currentLine: "正在加载歌词...",
+      isLoading: true,
+      currentColor: "#FFFFFF",
+      nextColor: "#9CA3AF"
+    });
 
     expect(
       buildDesktopLyricsPayload({
@@ -58,9 +69,15 @@ describe("lyrics helpers", () => {
         isLyricsLoading: false,
         currentTime: 0,
         fontFamily: "",
-        fontSize: 28
-      }).currentLine
-    ).toBe("未找到歌词。");
+        fontSize: 28,
+        currentColor: "#FFFFFF",
+        nextColor: "#9CA3AF"
+      })
+    ).toMatchObject({
+      currentLine: "未找到歌词。",
+      currentColor: "#FFFFFF",
+      nextColor: "#9CA3AF"
+    });
 
     expect(
       buildDesktopLyricsPayload({
@@ -69,9 +86,15 @@ describe("lyrics helpers", () => {
         isLyricsLoading: false,
         currentTime: 0,
         fontFamily: "",
-        fontSize: 28
-      }).currentLine
-    ).toBe("暂无播放");
+        fontSize: 28,
+        currentColor: "#FFFFFF",
+        nextColor: "#9CA3AF"
+      })
+    ).toMatchObject({
+      currentLine: "暂无播放",
+      currentColor: "#FFFFFF",
+      nextColor: "#9CA3AF"
+    });
   });
 });
 

@@ -88,7 +88,9 @@ describe("DesktopLyricsWindow", () => {
         nextLine: "下一句",
         isLoading: false,
         fontFamily: "",
-        fontSize: 28
+        fontSize: 28,
+        currentColor: "#FFFFFF",
+        nextColor: "#9CA3AF"
       });
     });
 

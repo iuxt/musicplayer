@@ -9,7 +9,9 @@ const INITIAL_PAYLOAD: DesktopLyricsPayload = {
   nextLine: null,
   isLoading: false,
   fontFamily: "",
-  fontSize: 28
+  fontSize: 28,
+  currentColor: "#FFFFFF",
+  nextColor: "#9CA3AF"
 };
 
 export function DesktopLyricsWindow() {

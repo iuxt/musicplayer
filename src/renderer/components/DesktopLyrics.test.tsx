@@ -14,7 +14,9 @@ describe("DesktopLyrics", () => {
           nextLine: "下一句歌词",
           isLoading: false,
           fontFamily: "LXGW WenKai",
-          fontSize: 30
+          fontSize: 30,
+          currentColor: "#FFCC00",
+          nextColor: "#5EEAD4"
         }}
       />
     );
@@ -24,6 +26,8 @@ describe("DesktopLyrics", () => {
     expect(screen.getByText("下一句歌词")).toBeTruthy();
     expect((surface as HTMLElement).style.getPropertyValue("--desktop-lyrics-font-family")).toContain("LXGW WenKai");
     expect((surface as HTMLElement).style.getPropertyValue("--desktop-lyrics-font-size")).toBe("30px");
+    expect((surface as HTMLElement).style.getPropertyValue("--desktop-lyrics-current-color")).toBe("#FFCC00");
+    expect((surface as HTMLElement).style.getPropertyValue("--desktop-lyrics-next-color")).toBe("#5EEAD4");
   });
 
   it("renders only lyric text without visible window controls", () => {
@@ -42,6 +46,8 @@ function makePayload(): DesktopLyricsPayload {
     nextLine: null,
     isLoading: false,
     fontFamily: "",
-    fontSize: 28
+    fontSize: 28,
+    currentColor: "#FFFFFF",
+    nextColor: "#9CA3AF"
   };
 }
