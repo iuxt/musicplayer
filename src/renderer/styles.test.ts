@@ -85,6 +85,7 @@ describe("renderer layout styles", () => {
     expect(rule(css, ".desktop-lyrics-current.loading")).toContain("color: var(--desktop-lyrics-current-color");
     expect(rule(css, ".desktop-lyrics-next")).toContain("color: var(--desktop-lyrics-next-color");
     expect(rule(css, ".desktop-lyrics-preview")).toContain("color: var(--desktop-lyrics-preview-current-color");
+    expect(rule(css, ".desktop-lyrics-preview p")).toContain("color: var(--desktop-lyrics-preview-current-color");
     expect(rule(css, ".desktop-lyrics-preview span")).toContain("color: var(--desktop-lyrics-preview-next-color");
   });
 

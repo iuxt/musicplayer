@@ -561,12 +561,10 @@ button:disabled {
 
 .desktop-lyrics-preview p {
   margin: 0;
+  color: var(--desktop-lyrics-preview-current-color, #ffffff);
+  font-weight: 760;
   line-height: 1.18;
   overflow-wrap: anywhere;
-}
-
-.desktop-lyrics-preview p {
-  font-weight: 760;
 }
 
 .desktop-lyrics-preview span {
