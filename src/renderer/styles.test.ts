@@ -78,6 +78,16 @@ describe("renderer layout styles", () => {
     expect(rule(css, ".desktop-lyrics-shell")).toContain("font-family: var(--desktop-lyrics-font-family");
   });
 
+  it("scopes desktop lyric colors through CSS variables", async () => {
+    const css = await readStyles();
+
+    expect(rule(css, ".desktop-lyrics-current")).toContain("color: var(--desktop-lyrics-current-color");
+    expect(rule(css, ".desktop-lyrics-current.loading")).toContain("color: var(--desktop-lyrics-current-color");
+    expect(rule(css, ".desktop-lyrics-next")).toContain("color: var(--desktop-lyrics-next-color");
+    expect(rule(css, ".desktop-lyrics-preview")).toContain("color: var(--desktop-lyrics-preview-current-color");
+    expect(rule(css, ".desktop-lyrics-preview span")).toContain("color: var(--desktop-lyrics-preview-next-color");
+  });
+
   it("makes only the desktop lyric text draggable", async () => {
     const css = await readStyles();
 
