@@ -1,4 +1,5 @@
 import type { DesktopLyricsPayload, Track } from "../shared/types";
+import { DEFAULT_DESKTOP_LYRICS_CURRENT_COLOR, DEFAULT_DESKTOP_LYRICS_NEXT_COLOR } from "./appSettings";
 
 export interface LyricLine {
   id: string;
@@ -13,8 +14,8 @@ interface DesktopLyricsPayloadInput {
   currentTime: number;
   fontFamily: string;
   fontSize: number;
-  currentColor: string;
-  nextColor: string;
+  currentColor?: string;
+  nextColor?: string;
 }
 
 export function parseLyrics(lyrics: string | null): LyricLine[] {
@@ -81,8 +82,8 @@ export function buildDesktopLyricsPayload({
   currentTime,
   fontFamily,
   fontSize,
-  currentColor,
-  nextColor
+  currentColor = DEFAULT_DESKTOP_LYRICS_CURRENT_COLOR,
+  nextColor = DEFAULT_DESKTOP_LYRICS_NEXT_COLOR
 }: DesktopLyricsPayloadInput): DesktopLyricsPayload {
   if (!track) {
     return {

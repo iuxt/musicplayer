@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Track } from "../shared/types";
+import { DEFAULT_DESKTOP_LYRICS_CURRENT_COLOR, DEFAULT_DESKTOP_LYRICS_NEXT_COLOR } from "./appSettings";
 import { buildDesktopLyricsPayload, findActiveLine, findNextLine, parseLyrics } from "./lyrics";
 
 describe("lyrics helpers", () => {
@@ -40,6 +41,22 @@ describe("lyrics helpers", () => {
       fontSize: 30,
       currentColor: "#FFCC00",
       nextColor: "#5EEAD4"
+    });
+  });
+
+  it("defaults desktop lyrics payload colors when omitted", () => {
+    expect(
+      buildDesktopLyricsPayload({
+        track: makeTrack({ hasLyrics: true, lyricsPath: "/music/song.lrc" }),
+        lyrics: "[00:01.00]Current\n[00:30.00]Later",
+        isLyricsLoading: false,
+        currentTime: 2,
+        fontFamily: "",
+        fontSize: 28
+      })
+    ).toMatchObject({
+      currentColor: DEFAULT_DESKTOP_LYRICS_CURRENT_COLOR,
+      nextColor: DEFAULT_DESKTOP_LYRICS_NEXT_COLOR
     });
   });
 
