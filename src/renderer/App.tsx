@@ -41,6 +41,11 @@ type PlaybackState = {
 
 type AppView = "library" | "settings";
 type MediaKeyCommand = "play-pause" | "next" | "previous";
+type CurrentTrackRemovalAction = "none" | "select" | "play";
+type TrackRemovalPlaybackOptions = {
+  currentTrackAction?: CurrentTrackRemovalAction;
+  replaceStoppedCurrentTrack?: boolean;
+};
 type PlaylistNameDialogState =
   | { mode: "create"; initialName: string; error: string | null }
   | { mode: "rename"; playlist: LibraryPlaylist; initialName: string; error: string | null }
@@ -95,7 +100,6 @@ export function App() {
     savedAt: 0,
     wasPlaying: false
   });
-  const stoppedBeforeTrashTrackIdRef = useRef<string | null>(null);
 
   const loadLibraryResult = useCallback((result: ScanResult) => {
     setFolderPath(result.folderPath);
@@ -998,7 +1002,7 @@ export function App() {
   );
 
   const removeTrackFromLibrary = useCallback(
-    async (trackToRemove: Track) => {
+    async (trackToRemove: Track, playbackOptions: TrackRemovalPlaybackOptions = {}) => {
       const currentQueueIndex = playlistTracks.findIndex((queuedTrack) => queuedTrack.id === trackToRemove.id);
       const nextQueue = playlistTracks.filter((queuedTrack) => queuedTrack.id !== trackToRemove.id);
       const nextTrack = currentQueueIndex >= 0 ? nextQueue[currentQueueIndex] ?? null : null;
@@ -1015,17 +1019,15 @@ export function App() {
       removePlaybackStateForTrack(trackToRemove.id);
 
       const currentPlayer = playerRef.current;
-      if (stoppedBeforeTrashTrackIdRef.current === trackToRemove.id) {
-        if (currentPlayer.currentTrack?.id === trackToRemove.id) {
-          setLyrics(null);
-          setArtworkUrl(null);
-          setIsLyricsLoading(false);
-          await currentPlayer.stop();
-        }
-        return;
-      }
+      const currentTrackAction =
+        playbackOptions.currentTrackAction ??
+        (currentPlayer.currentTrack?.id === trackToRemove.id ? (currentPlayer.isPlaying ? "play" : "select") : "none");
+      const shouldUpdateCurrentTrack =
+        currentTrackAction !== "none" &&
+        (currentPlayer.currentTrack?.id === trackToRemove.id ||
+          (playbackOptions.replaceStoppedCurrentTrack && currentPlayer.currentTrack === null));
 
-      if (currentPlayer.currentTrack?.id !== trackToRemove.id) {
+      if (!shouldUpdateCurrentTrack) {
         return;
       }
 
@@ -1037,7 +1039,7 @@ export function App() {
         return;
       }
 
-      if (currentPlayer.isPlaying) {
+      if (currentTrackAction === "play") {
         await currentPlayer.playTrack(nextTrack);
       } else {
         await currentPlayer.selectTrack(nextTrack);
@@ -1106,8 +1108,10 @@ export function App() {
 
       setPendingMediaAction(true);
       setAppError(null);
-      if (player.currentTrack?.id === track.id) {
-        stoppedBeforeTrashTrackIdRef.current = track.id;
+      const currentTrackAction: CurrentTrackRemovalAction =
+        player.currentTrack?.id !== track.id ? "none" : player.isPlaying ? "play" : "select";
+      const shouldStopCurrentTrack = currentTrackAction !== "none";
+      if (shouldStopCurrentTrack) {
         setLyrics(null);
         setArtworkUrl(null);
         setIsLyricsLoading(false);
@@ -1117,7 +1121,15 @@ export function App() {
       try {
         const result = await window.musicApi.trashTrackFiles(track);
         if (result.audioRemoved) {
-          await removeTrackFromLibrary(track);
+          await removeTrackFromLibrary(
+            track,
+            shouldStopCurrentTrack
+              ? {
+                  currentTrackAction,
+                  replaceStoppedCurrentTrack: true
+                }
+              : undefined
+          );
         }
         if (!result.ok && result.error) {
           setAppError(result.error);
@@ -1125,9 +1137,6 @@ export function App() {
       } catch (error) {
         setAppError(error instanceof Error ? error.message : "无法将音乐文件移到废纸篓。");
       } finally {
-        if (stoppedBeforeTrashTrackIdRef.current === track.id) {
-          stoppedBeforeTrashTrackIdRef.current = null;
-        }
         setPendingMediaAction(false);
         setTrackMenu(null);
       }

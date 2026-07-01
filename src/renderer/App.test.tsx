@@ -928,7 +928,7 @@ describe("App", () => {
     confirmSpy.mockRestore();
   });
 
-  it("stops the current track before trashing it and does not start the next track", async () => {
+  it("stops the current track before trashing it and starts the next track after deletion", async () => {
     localStorage.setItem("musicplayer:last-folder", rememberedFolder);
     localStorage.setItem(libraryCacheKey, JSON.stringify(scanResult));
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
@@ -968,7 +968,9 @@ describe("App", () => {
 
     await waitFor(() => expect(window.musicApi.trashTrackFiles).toHaveBeenCalledWith(track));
     expect(deleteEvents).toEqual(["pause", "load", "released", "trash-after-release"]);
-    expect(window.musicApi.getPlayableUrl).not.toHaveBeenCalledWith(folderTrack.filePath);
+    await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenLastCalledWith(folderTrack.filePath));
+    expect(within(screen.getByRole("contentinfo")).getByText("Artist Folder Song")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "暂停" })).toBeTruthy();
 
     confirmSpy.mockRestore();
   });
@@ -1011,8 +1013,9 @@ describe("App", () => {
     );
     expect(within(screen.getByRole("region", { name: "播放列表" })).queryByText("Wave Song")).toBeNull();
     expect(within(screen.getByRole("contentinfo")).queryByText("Wave Song")).toBeNull();
-    expect(screen.queryByRole("button", { name: "暂停" })).toBeNull();
-    expect(window.musicApi.getPlayableUrl).not.toHaveBeenCalledWith(folderTrack.filePath);
+    await waitFor(() => expect(window.musicApi.getPlayableUrl).toHaveBeenLastCalledWith(folderTrack.filePath));
+    expect(within(screen.getByRole("contentinfo")).getByText("Artist Folder Song")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "暂停" })).toBeTruthy();
 
     confirmSpy.mockRestore();
   });
