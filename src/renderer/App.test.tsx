@@ -161,6 +161,7 @@ describe("App", () => {
     render(<App />);
 
     await waitFor(() => expect(screen.getAllByText("Wave Song").length).toBeGreaterThan(0));
+    expect(window.musicApi.readLibraryCache).toHaveBeenCalledWith(rememberedFolder);
     expect(window.musicApi.rescanLibrary).not.toHaveBeenCalled();
   });
 

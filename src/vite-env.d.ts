@@ -27,7 +27,7 @@ declare global {
     musicApi: {
       chooseMusicFolder: () => Promise<ScanResult | null>;
       rescanLibrary: (folderPath: string) => Promise<ScanResult>;
-      readLibraryCache: () => Promise<unknown | null>;
+      readLibraryCache: (folderPath?: string) => Promise<unknown | null>;
       writeLibraryCache: (result: ScanResult) => Promise<void>;
       clearLibraryCache: () => Promise<void>;
       createPlaylist: (folderPath: string, name: string) => Promise<PlaylistMutationResult>;

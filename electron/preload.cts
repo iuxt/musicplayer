@@ -20,7 +20,7 @@ type SystemMediaShortcutsPermissionResult =
 contextBridge.exposeInMainWorld("musicApi", {
   chooseMusicFolder: (): Promise<ScanResult | null> => ipcRenderer.invoke("library:choose-folder"),
   rescanLibrary: (folderPath: string): Promise<ScanResult> => ipcRenderer.invoke("library:rescan", folderPath),
-  readLibraryCache: (): Promise<unknown | null> => ipcRenderer.invoke("library:read-cache"),
+  readLibraryCache: (folderPath?: string): Promise<unknown | null> => ipcRenderer.invoke("library:read-cache", folderPath),
   writeLibraryCache: (result: ScanResult): Promise<void> => ipcRenderer.invoke("library:write-cache", result),
   clearLibraryCache: (): Promise<void> => ipcRenderer.invoke("library:clear-cache"),
   createPlaylist: (folderPath: string, name: string): Promise<PlaylistMutationResult> =>

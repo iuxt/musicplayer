@@ -204,6 +204,14 @@ function assertCurrentLibraryRoot(folderPath: string) {
   return resolvedFolderPath;
 }
 
+function isCachedScanResultForFolder(value: unknown, folderPath: string): value is ScanResult {
+  return isRecord(value) && typeof value.folderPath === "string" && path.resolve(value.folderPath) === path.resolve(folderPath);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
 function assertCurrentLibraryTrack(track: Track) {
   return {
     ...track,
@@ -414,8 +422,12 @@ function registerIpc() {
     });
   });
 
-  ipcMain.handle("library:read-cache", () => {
-    return readLibraryCacheFile(getLibraryCachePath());
+  ipcMain.handle("library:read-cache", async (_event, folderPath?: string) => {
+    const cachedResult = await readLibraryCacheFile(getLibraryCachePath());
+    if (folderPath && isCachedScanResultForFolder(cachedResult, folderPath)) {
+      setCurrentLibraryRootPath(folderPath);
+    }
+    return cachedResult;
   });
 
   ipcMain.handle("library:write-cache", (_event, result: ScanResult) => {

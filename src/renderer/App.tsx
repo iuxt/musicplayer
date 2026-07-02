@@ -512,7 +512,7 @@ export function App() {
     void (async () => {
       let cachedResult: unknown | null = null;
       try {
-        cachedResult = await window.musicApi.readLibraryCache();
+        cachedResult = await window.musicApi.readLibraryCache(rememberedFolderPath);
       } catch {
         cachedResult = null;
       }
